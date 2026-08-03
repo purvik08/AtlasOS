@@ -1,0 +1,26 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+build/
+dist/
+
+# Runtime data -- keep directories, ignore contents.
+data/
+logs/*
+!logs/.gitkeep
+models/*
+!models/.gitkeep
+!models/*.gguf
+plugins/*
+!plugins/.gitkeep
+
+# Local config / secrets
+.env
+*.token
+
+.DS_Store

@@ -1,0 +1,20 @@
+# Atlas OS runtime configuration.
+#
+# Values here override the field defaults in atlas.config.settings.AtlasConfig.
+# They are, in turn, overridden by environment variables prefixed with
+# ATLAS_ (e.g. ATLAS_LOG_LEVEL=DEBUG), which always take precedence -- see
+# atlas/config/loader.py for the full precedence order.
+
+app_name: "Atlas OS"
+environment: "development"
+
+log_level: "INFO"
+log_json: false
+
+data_dir: "./data"
+models_dir: "./models"
+plugins_dir: "./plugins"
+
+health_check_interval_seconds: 15
+heartbeat_interval_seconds: 5
+graceful_shutdown_timeout_seconds: 10

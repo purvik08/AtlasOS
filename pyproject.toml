@@ -1,0 +1,67 @@
+[project]
+name = "atlas-os"
+version = "0.1.0"
+description = "Atlas OS -- a modular, offline-first AI edge operating system for Raspberry Pi 5."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Purvik" }]
+
+# NOTE: only dependencies actually required by the Runtime Core module are
+# listed as core dependencies. Dependencies needed by future modules (voice,
+# MQTT, AI engines, ...) are declared as optional extras below and will be
+# activated as those modules land, so `pip install .` for Runtime Core alone
+# stays lightweight.
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "pyyaml>=6.0",
+    "httpx>=0.27",
+    "psutil>=6.0",
+]
+
+[project.scripts]
+atlas = "atlas.cli:cli"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "mypy>=1.13",
+    "ruff>=0.7",
+    "types-PyYAML>=6.0",
+]
+# Placeholders for later modules -- not required by Runtime Core.
+voice = ["sounddevice", "openwakeword", "faster-whisper", "pyaudio"]
+mqtt = ["paho-mqtt"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/atlas"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC"]
+# UP042: we deliberately use `class X(str, Enum)` instead of `enum.StrEnum`.
+# StrEnum is Python 3.11+ only and the `(str, Enum)` pattern remains the more
+# widely recognized idiom across the ecosystem (Pydantic, FastAPI docs); the
+# two are functionally equivalent for our purposes (JSON serialization,
+# value comparison, `.value` access).
+ignore = ["UP042"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"

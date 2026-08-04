@@ -18,3 +18,27 @@ plugins_dir: "./plugins"
 health_check_interval_seconds: 15
 heartbeat_interval_seconds: 5
 graceful_shutdown_timeout_seconds: 10
+
+# ---------------------------------------------------------------------------
+# AI Engine (Phase 5)
+# ---------------------------------------------------------------------------
+ai:
+  # Default provider used when no explicit provider is requested.
+  # Options: llama_cpp | gemini | deepseek | kimi | qwen
+  default_provider: "llama_cpp"
+
+  # Default routing role when provider_name is not specified.
+  # Options: local | cloud | auto  (auto = prefer local, fallback cloud)
+  default_role: "auto"
+
+  # Maximum number of messages retained per conversation session.
+  max_history_messages: 50
+
+  # Cloud provider API keys.
+  # Leave empty to keep providers in stub/mock mode.
+  # Override via environment variables:
+  #   ATLAS_AI__GEMINI_API_KEY, ATLAS_AI__DEEPSEEK_API_KEY, etc.
+  gemini_api_key: ""
+  deepseek_api_key: ""
+  kimi_api_key: ""
+  qwen_api_key: ""

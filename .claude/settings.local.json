@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ruff check *)",
+      "Bash(python *)",
+      "Bash(pip install *)",
+      "Bash(atlas version *)",
+      "Bash(black . *)",
+      "Bash(black *)",
+      "Bash(atlas doctor *)",
+      "Bash(atlas runtime *)"
+    ]
+  }
+}

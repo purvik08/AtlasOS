@@ -100,9 +100,12 @@ class BackgroundTaskManager:
             if self._shutting_down:
                 return
 
-            should_restart = supervised.restart_policy is RestartPolicy.ALWAYS or (
-                supervised.restart_policy is RestartPolicy.ON_FAILURE
-                and not exited_cleanly
+            should_restart = (
+                supervised.restart_policy is RestartPolicy.ALWAYS
+                or (
+                    supervised.restart_policy is RestartPolicy.ON_FAILURE
+                    and not exited_cleanly
+                )
             )
             if (
                 not should_restart

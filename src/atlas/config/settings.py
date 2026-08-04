@@ -8,8 +8,48 @@ prioritized.
 
 from __future__ import annotations
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class AIConfig(BaseModel):
+    """Configuration for the Phase 5 AI Engine (``atlas.ai``).
+
+    All fields can be overridden in ``configs/atlas.yaml`` under the ``ai:``
+    key, or via environment variables with the ``ATLAS_AI__`` prefix (using
+    the double-underscore nested delimiter), e.g.::
+
+        ATLAS_AI__GEMINI_API_KEY=sk-...
+        ATLAS_AI__DEFAULT_ROLE=cloud
+    """
+
+    default_provider: str = Field(
+        default="llama_cpp",
+        description="Name of the provider used when no explicit provider is requested.",
+    )
+    default_role: str = Field(
+        default="auto",
+        description="Default routing role: 'local', 'cloud', or 'auto'.",
+    )
+    max_history_messages: int = Field(
+        default=50,
+        gt=0,
+        description="Maximum number of messages retained per conversation session.",
+    )
+    # Cloud provider API keys.  Left empty by default so the stubs remain
+    # functional without any credentials configured.
+    gemini_api_key: str = Field(
+        default="", description="Google Gemini API key (ATLAS_AI__GEMINI_API_KEY)."
+    )
+    deepseek_api_key: str = Field(
+        default="", description="DeepSeek API key (ATLAS_AI__DEEPSEEK_API_KEY)."
+    )
+    kimi_api_key: str = Field(
+        default="", description="Kimi (Moonshot) API key (ATLAS_AI__KIMI_API_KEY)."
+    )
+    qwen_api_key: str = Field(
+        default="", description="Alibaba Qwen API key (ATLAS_AI__QWEN_API_KEY)."
+    )
 
 
 class AtlasConfig(BaseSettings):
@@ -60,4 +100,11 @@ class AtlasConfig(BaseSettings):
         default=10.0,
         gt=0,
         description="Max time to wait for background tasks to cancel during shutdown.",
+    )
+
+    # -- AI Engine -------------------------------------------------------
+
+    ai: AIConfig = Field(
+        default_factory=AIConfig,
+        description="Configuration for the AI Engine (atlas.ai).",
     )

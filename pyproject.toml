@@ -20,10 +20,13 @@ dependencies = [
     "pyyaml>=6.0",
     "httpx>=0.27",
     "psutil>=6.0",
+    "cryptography>=42.0",
+    "keyring>=24.0",
 ]
 
 [project.scripts]
-atlas = "atlas.cli:cli"
+atlas = "atlas.cli.main:cli"
+
 
 [project.optional-dependencies]
 dev = [
@@ -36,6 +39,7 @@ dev = [
 # Placeholders for later modules -- not required by Runtime Core.
 voice = ["sounddevice", "openwakeword", "faster-whisper", "pyaudio"]
 mqtt = ["paho-mqtt"]
+api = ["uvicorn[standard]"]  # For running the API server
 
 [build-system]
 requires = ["hatchling"]
@@ -59,9 +63,20 @@ select = ["E", "F", "I", "B", "UP", "ASYNC"]
 # widely recognized idiom across the ecosystem (Pydantic, FastAPI docs); the
 # two are functionally equivalent for our purposes (JSON serialization,
 # value comparison, `.value` access).
-ignore = ["UP042"]
+# B008: FastAPI's `Depends()` is designed to be used in parameter defaults.
+# This is the standard and recommended pattern per FastAPI documentation.
+ignore = ["UP042", "B008"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
 mypy_path = "src"
+
+# Exclude modules with missing stubs (PySide6, voice dependencies)
+exclude = [
+    "src/atlas/ui/.*",
+    "src/atlas/voice/.*",
+]
+
+# Ignore missing stubs for optional dependencies
+ignore_missing_imports = true

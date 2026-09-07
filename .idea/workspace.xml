@@ -1,16 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
   <component name="ChangeListManager">
     <list default="true" id="a556e2c8-f879-4be3-bb43-04e52683f818" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/src/atlas/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/atlas/__main__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/__main__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/atlas/runtime/registry.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/runtime/registry.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/atlas/runtime/tasks.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/runtime/tasks.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/AtlasOS.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/AtlasOS.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/atlas/ai/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/ai/model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/atlas/api/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/api/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/atlas/api/routes/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/api/routes/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/atlas/api/routes/chat.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/api/routes/chat.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/atlas/api/routes/memory.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/api/routes/memory.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/atlas/api/routes/network.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/api/routes/network.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/atlas/api/routes/terminal.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/api/routes/terminal.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/atlas/api/routes/voice.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/api/routes/voice.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/atlas/cli.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/cli.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/atlas/cli/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/cli/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/atlas/memory/embedder.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/memory/embedder.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/atlas/network/service.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/network/service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/atlas/runtime/container.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/runtime/container.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/atlas/ui/dashboard/models/terminal_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/ui/dashboard/models/terminal_model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/atlas/voice/audio.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/atlas/voice/audio.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_ui/test_terminal_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_ui/test_terminal_model.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="EmbeddingIndexingInfo">
+    <option name="cachedIndexableFilesCount" value="288" />
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -19,10 +40,69 @@
     <commands />
     <urls />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 3,
-  "fromUser": false
-}]]></component>
+  <component name="NextEditCompletionFeaturesState">
+    <decayedCancelled>
+      <entry key="MS100" value="1.0" />
+      <entry key="MS500" value="1.0" />
+      <entry key="S2" value="1.0" />
+      <entry key="S5" value="1.0" />
+      <entry key="S10" value="1.0" />
+      <entry key="S30" value="1.0" />
+      <entry key="S60" value="1.0" />
+      <entry key="M2" value="1.0" />
+      <entry key="M5" value="1.0" />
+      <entry key="M10" value="1.0" />
+      <entry key="M15" value="1.0" />
+      <entry key="M30" value="1.0" />
+      <entry key="H1" value="1.0" />
+      <entry key="H2" value="1.0" />
+      <entry key="H4" value="1.0" />
+      <entry key="D1" value="1.0" />
+      <entry key="W1" value="1.0" />
+    </decayedCancelled>
+    <decayedSelected>
+      <entry key="MS100" value="0.0" />
+      <entry key="MS500" value="0.0" />
+      <entry key="S2" value="0.0" />
+      <entry key="S5" value="0.0" />
+      <entry key="S10" value="0.0" />
+      <entry key="S30" value="0.0" />
+      <entry key="S60" value="0.0" />
+      <entry key="M2" value="0.0" />
+      <entry key="M5" value="0.0" />
+      <entry key="M10" value="0.0" />
+      <entry key="M15" value="0.0" />
+      <entry key="M30" value="0.0" />
+      <entry key="H1" value="0.0" />
+      <entry key="H2" value="0.0" />
+      <entry key="H4" value="0.0" />
+      <entry key="D1" value="0.0" />
+      <entry key="W1" value="0.0" />
+    </decayedSelected>
+    <decayedShown>
+      <entry key="MS100" value="9.95254323480131E-13" />
+      <entry key="MS500" value="0.003977285936580549" />
+      <entry key="S2" value="0.2511289053758897" />
+      <entry key="S5" value="0.5753851928965165" />
+      <entry key="S10" value="0.7585414905570534" />
+      <entry key="S30" value="0.9119963781007787" />
+      <entry key="S60" value="0.9549850145948776" />
+      <entry key="M2" value="0.977233347054263" />
+      <entry key="M5" value="0.9908303737737446" />
+      <entry key="M10" value="0.9954046281657246" />
+      <entry key="M15" value="0.9969340675895646" />
+      <entry key="M30" value="0.9984658569974061" />
+      <entry key="H1" value="0.9992326340734704" />
+      <entry key="H2" value="0.999616243402172" />
+      <entry key="H4" value="0.9998081032889121" />
+      <entry key="D1" value="0.9999680146572724" />
+      <entry key="W1" value="0.9999954306026869" />
+    </decayedShown>
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 3,
+  &quot;fromUser&quot;: false
+}</component>
   <component name="ProjectId" id="3HSPTDCMxpDNY8piWjxl950tsVw" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -32,7 +112,20 @@
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.MCP Project settings loaded": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true"
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "Temp",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "D:/AtlasOS",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "ml.llm.AcpAgentsConfigurable"
   }
 }]]></component>
   <component name="SharedIndexes">
@@ -52,5 +145,12 @@
       <updated>1785858510051</updated>
     </task>
     <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
   </component>
 </project>

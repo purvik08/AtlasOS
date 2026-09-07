@@ -1,4 +1,5 @@
-"""Tests for AIManager service lifecycle, session orchestration, provider health, and inference dispatch."""
+"""Tests for AIManager service lifecycle, session orchestration,
+provider health, and inference dispatch."""
 
 from __future__ import annotations
 
@@ -6,7 +7,6 @@ import pytest
 
 from atlas.ai.manager import AIManager, SessionNotFoundError
 from atlas.ai.providers.base import MessageRole
-from atlas.ai.router import ProviderNotFoundError
 from atlas.config.settings import AtlasConfig
 from atlas.runtime.health import HealthStatus
 
@@ -151,11 +151,19 @@ async def test_list_models(manager):
 
 
 async def test_load_and_unload_model(manager, tmp_path):
+    from unittest.mock import MagicMock, patch
+
     gguf = tmp_path / "custom.gguf"
     gguf.write_bytes(b"\x00" * 10)
     manager.model_registry.scan(tmp_path)
 
-    await manager.load_model("custom")
+    # Mock llama_cpp.Llama so the dummy file is accepted without real GGUF parsing.
+    mock_instance = MagicMock()
+    with patch("atlas.ai.providers.llama_cpp.llama_cpp") as mock_llama_cpp, \
+         patch.object(manager.resource_manager, "check_allocation_safety"):
+        mock_llama_cpp.Llama.return_value = mock_instance
+        await manager.load_model("custom")
+
     assert manager.model_registry.get("custom").loaded is True
 
     await manager.unload_model("custom")

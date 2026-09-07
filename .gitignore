@@ -1,5 +1,6 @@
 __pycache__/
 *.py[cod]
+*.gguf
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
@@ -24,3 +25,4 @@ plugins/*
 *.token
 
 .DS_Store
+models/qwen3-0.6b-q4_k_m.gguf

@@ -13,18 +13,17 @@ console = Console()
 
 
 @click.group(name="runtime")
-def runtime_group():
+def runtime_group() -> None:
     """Manage the Atlas OS runtime."""
     pass
 
 
 @runtime_group.command()
 @click.pass_context
-def status(ctx):
+def status(ctx: click.Context) -> None:
     """Show runtime status, health, and resource usage."""
     container = ctx.obj["container"]
     health = container.resolve("health_monitor")
-    heartbeat = container.resolve("heartbeat_service")
     task_mgr = container.resolve("task_manager")
     registry = container.resolve("service_registry")
     lifecycle = container.resolve("lifecycle_manager")
@@ -41,7 +40,14 @@ def status(ctx):
     table.add_row(
         "Registered Services", str(len(registry.all()) if registry else 0)
     )
-    active_count = sum(1 for t in task_mgr._tasks.values() if t.task is not None and not t.task.done()) if task_mgr else 0
+    if task_mgr:
+        active_count = sum(
+            1
+            for t in task_mgr._tasks.values()
+            if t.task is not None and not t.task.done()
+        )
+    else:
+        active_count = 0
     table.add_row(
         "Active Background Tasks", str(active_count)
     )
@@ -59,14 +65,14 @@ def status(ctx):
 
     # Health summary
     if health:
-        healthy = health.is_healthy()
+        report = health.latest_report
+        healthy = report.status.value == "healthy"
         panel = Panel(
             (
                 "[bold green][+][/] System is healthy"
                 if healthy
                 else "[bold red][x][/] System is unhealthy"
             ),
-            state="green" if healthy else "red",
             border_style="green" if healthy else "red",
         )
         console.print(panel)
@@ -74,7 +80,7 @@ def status(ctx):
 
 @runtime_group.command()
 @click.pass_context
-def stop(ctx):
+def stop(ctx: click.Context) -> None:
     """Gracefully shut down Atlas OS."""
     app = ctx.obj["app"]
     console.print("[yellow]Shutting down Atlas OS...[/]")
@@ -86,7 +92,7 @@ def stop(ctx):
 
 @runtime_group.command()
 @click.pass_context
-def restart(ctx):
+def restart(ctx: click.Context) -> None:
     """Restart the Atlas OS runtime."""
     app = ctx.obj["app"]
     console.print("[yellow]Restarting Atlas OS...[/]")
@@ -98,7 +104,7 @@ def restart(ctx):
 
 @runtime_group.command()
 @click.pass_context
-def health(ctx):
+def health(ctx: click.Context) -> None:
     """Display detailed health checks for all services."""
     container = ctx.obj["container"]
     health = container.resolve("health_monitor")
@@ -106,22 +112,26 @@ def health(ctx):
         console.print("[red]Health monitor not available.[/]")
         return
 
-    results = health.run_all_checks()
+    report = health.latest_report
     table = Table(title="Service Health")
     table.add_column("Service", style="cyan")
     table.add_column("Status", style="green")
     table.add_column("Message", style="white")
 
-    for svc, result in results.items():
-        status_icon = "[+]" if result.ok else "[x]"
-        status_color = "green" if result.ok else "red"
-        table.add_row(svc, f"[{status_color}]{status_icon}[/]", result.message or "")
+    for svc_health in report.services:
+        status_icon = "[+]" if svc_health.status.value == "healthy" else "[x]"
+        status_color = "green" if svc_health.status.value == "healthy" else "red"
+        table.add_row(
+            svc_health.name,
+            f"[{status_color}]{status_icon}[/]",
+            svc_health.message or "",
+        )
     console.print(table)
 
 
 @runtime_group.command()
 @click.pass_context
-def services(ctx):
+def services(ctx: click.Context) -> None:
     """List all registered services and their state."""
     container = ctx.obj["container"]
     registry = container.resolve("service_registry")

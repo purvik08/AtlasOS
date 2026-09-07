@@ -1,6 +1,7 @@
-"""Atlas OS utils module.
+"""Atlas OS utils module."""
 
-Not yet implemented. Reserved by the Atlas OS project structure; this
-package will be filled in by a later module per the build roadmap (see
-docs/architecture and the top-level README).
-"""
+from __future__ import annotations
+
+from atlas.utils.venv import get_python_executable
+
+__all__ = ["get_python_executable"]

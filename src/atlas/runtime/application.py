@@ -65,6 +65,79 @@ class AtlasApplication:
         self._stopped_event = asyncio.Event()
         self._stopped_event.set()
 
+        # ------------------------------------------------------------------
+        # AI Engine — register as singleton in DI container + service registry
+        # ------------------------------------------------------------------
+        from atlas.ai.manager import AIManager
+
+        self._ai_manager = AIManager(config)
+        self._container.register_instance("ai_manager", self._ai_manager)
+        self._registry.register(self._ai_manager)
+
+        # Shared offline-first services used by API, CLI, desktop, RAG, and OS AI
+        from pathlib import Path
+
+        from atlas.memory.embedder import create_best_embedder
+        from atlas.memory.service import MemoryService
+        from atlas.network.service import NetworkService
+        from atlas.rag.service import RAGService
+
+        data_dir = Path(getattr(config, "data_dir", "./data"))
+        data_dir.mkdir(parents=True, exist_ok=True)
+        embedder = create_best_embedder()
+        memory_svc = MemoryService(
+            embedder=embedder,
+            persist_path=data_dir / "memories.json",
+        )
+        rag_svc = RAGService(
+            embedder=embedder,
+            data_dir=data_dir,
+            memory_service=memory_svc,
+        )
+        self._container.register_instance("memory_service", memory_svc)
+        self._container.register_instance("rag_service", rag_svc)
+        network_svc = NetworkService()
+        self._container.register_instance("network_service", network_svc)
+        self._container.register_instance("service_registry", self._registry)
+
+        from atlas.plugins.core import PluginManager
+
+        # Voice manager is optional - graceful degradation if dependencies are missing
+        voice_mgr = None
+        try:
+            from atlas.voice.core import VoiceManager
+
+            voice_mgr = VoiceManager()
+            logger.info("Voice module initialized")
+        except (ImportError, ModuleNotFoundError) as e:
+            logger.warning(
+                "Voice module unavailable (%s). Install with: pip install 'atlas-os[voice]'",
+                e,
+            )
+
+        plugin_mgr = PluginManager(plugins_dir=getattr(config, "plugins_dir", "./plugins"))
+        self._container.register_instance("plugin_manager", plugin_mgr)
+        if voice_mgr:
+            self._container.register_instance("voice_manager", voice_mgr)
+
+        from atlas.ai.os_ai import AtlasOSAI
+        from atlas.ai.tools import create_default_tool_registry
+
+        os_ai = AtlasOSAI(
+            ai_manager=self._ai_manager,
+            rag_service=rag_svc,
+            tool_registry=create_default_tool_registry(
+                container=self._container,
+                rag_service=rag_svc,
+                model_registry=self._ai_manager.model_registry,
+                voice_manager=voice_mgr,
+                network_service=network_svc,
+                plugin_manager=plugin_mgr,
+            ),
+            container=self._container,
+        )
+        self._container.register_instance("os_ai", os_ai)
+
     # -- Public accessors ----------------------------------------------
 
     @property

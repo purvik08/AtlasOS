@@ -23,7 +23,7 @@ import enum
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -88,7 +88,7 @@ class Message(BaseModel):
 
     role: MessageRole
     content: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -167,7 +167,20 @@ class ProviderHealth(BaseModel):
     status: ProviderStatus = ProviderStatus.HEALTHY
     loaded_models: list[str] = Field(default_factory=list)
     message: str = ""
-    checked_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class ProviderCapabilities(BaseModel):
+    """Dynamic capability feature flags for a provider."""
+
+    streaming: bool = True
+    embeddings: bool = False
+    vision: bool = False
+    tools: bool = False
+    max_context_tokens: int = 4096
+    supported_roles: list[ProviderRole] = Field(
+        default_factory=lambda: [ProviderRole.LOCAL, ProviderRole.CLOUD]
+    )
 
 
 class ProviderInfo(BaseModel):
@@ -177,6 +190,7 @@ class ProviderInfo(BaseModel):
     role: ProviderRole
     description: str = ""
     available: bool = True
+    capabilities: ProviderCapabilities = Field(default_factory=ProviderCapabilities)
 
 
 # ---------------------------------------------------------------------------
@@ -213,6 +227,11 @@ class AIProvider(ABC):
     @abstractmethod
     def description(self) -> str:
         """Human-readable one-line description shown in ``atlas provider list``."""
+
+    @property
+    def capabilities(self) -> ProviderCapabilities:
+        """Dynamic capability flags reported by this provider."""
+        return ProviderCapabilities()
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -312,6 +331,7 @@ class AIProvider(ABC):
             name=self.name,
             role=self.role,
             description=self.description,
+            capabilities=self.capabilities,
         )
 
     def __repr__(self) -> str:

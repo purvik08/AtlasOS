@@ -1,83 +1,84 @@
-"""Model downloader for Atlas OS.
+"""Production-grade model file downloader for Atlas OS.
 
-:class:`ModelDownloader` handles fetching GGUF (and future format) model files
-from remote sources — primarily Hugging Face Hub — and saving them into
-``models_dir``.
-
-For Phase 5 the actual HTTP download is **stubbed**: the interface, progress
-reporting, and error handling are all production-quality; wiring in real
-``httpx`` streaming (or the ``huggingface_hub`` library) is left for Phase 6.
-
-Design principles
------------------
-* Downloads are async and non-blocking; they can be dispatched into the
-  :class:`~atlas.runtime.tasks.BackgroundTaskManager` for long-running pulls.
-* Progress is emitted via an optional ``progress_callback`` so the CLI, API,
-  and web dashboard can all render it differently.
-* The downloader never hardcodes paths — all destinations come from
-  ``AtlasConfig.models_dir``.
+Features
+--------
+* Async streaming download via ``httpx.AsyncClient``.
+* Resume capability using HTTP ``Range`` headers for partial downloads.
+* Progress reporting callbacks ``(model_id, bytes_downloaded, total_bytes)``.
+* Optional SHA-256 checksum verification.
+* Automatic model registration into :class:`~atlas.ai.model.ModelRegistry`.
 """
 
 from __future__ import annotations
 
-import asyncio
+import hashlib
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Awaitable
+from typing import TYPE_CHECKING
+
+import anyio
+import httpx
+
+if TYPE_CHECKING:
+    from atlas.ai.model import ModelRegistry
 
 logger = logging.getLogger(__name__)
 
-# Type alias for an async progress callback.
 ProgressCallback = Callable[[str, int, int], Awaitable[None]]
-"""``callback(model_id, bytes_downloaded, total_bytes)``"""
 
 
 @dataclass
 class DownloadResult:
-    """Result of a completed (or failed) download attempt.
-
-    Attributes
-    ----------
-    model_id:
-        Identifier of the model that was downloaded.
-    success:
-        ``True`` if the file was saved successfully.
-    path:
-        Local path where the file was saved (empty if *success* is False).
-    error:
-        Human-readable error message if the download failed.
-    bytes_downloaded:
-        Total bytes saved.
-    """
+    """Result of a download attempt."""
 
     model_id: str
     success: bool
     path: Path = field(default_factory=Path)
     error: str = ""
     bytes_downloaded: int = 0
+    checksum_verified: bool = False
 
 
-class DownloadError(Exception):
-    """Raised when a download cannot be completed."""
+class DownloadError(RuntimeError):
+    """Raised when a download fails."""
+
+
+class ChecksumError(DownloadError):
+    """Raised when SHA-256 checksum verification fails."""
 
 
 class ModelDownloader:
-    """Downloads model files from remote sources into ``models_dir``.
+    """Downloads model files with resume, progress callbacks, and SHA-256 verification.
 
     Parameters
     ----------
     models_dir:
         Destination directory for downloaded files.
+    registry:
+        Optional :class:`~atlas.ai.model.ModelRegistry` for automatic registration.
     """
 
-    def __init__(self, models_dir: str | Path = "./models") -> None:
+    def __init__(
+        self,
+        models_dir: str | Path = "./models",
+        registry: ModelRegistry | None = None,
+    ) -> None:
         self._models_dir = Path(models_dir)
+        self._registry = registry
         logger.debug("ModelDownloader initialised; target=%s", self._models_dir)
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
+    def verify_checksum(self, file_path: Path, expected_sha256: str) -> bool:
+        """Verify the SHA-256 hash of a local file."""
+        if not file_path.exists():
+            return False
+        hasher = hashlib.sha256()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
+                hasher.update(chunk)
+        calculated = hasher.hexdigest().lower()
+        return calculated == expected_sha256.lower()
 
     async def download(
         self,
@@ -85,87 +86,115 @@ class ModelDownloader:
         source_url: str,
         *,
         filename: str | None = None,
+        expected_sha256: str | None = None,
         progress_callback: ProgressCallback | None = None,
         overwrite: bool = False,
     ) -> DownloadResult:
-        """Download a model file from *source_url*.
+        """Download a file with HTTP Range resume and SHA-256 check.
 
         Parameters
         ----------
         model_id:
-            Identifier assigned to this model (used for logging and the
-            :class:`~atlas.ai.model.ModelRegistry`).
+            Identifier assigned to this model.
         source_url:
-            Full URL to the GGUF file (Hugging Face Hub raw URL, CDN, etc.).
+            URL to download from.
         filename:
-            Override the local filename.  Defaults to the last path segment
-            of *source_url* or ``f"{model_id}.gguf"``.
+            Override local filename. Defaults to derived name from URL or model_id.
+        expected_sha256:
+            Optional SHA-256 hex string to verify file integrity.
         progress_callback:
-            Async callable invoked periodically with
-            ``(model_id, bytes_downloaded, total_bytes)``.
-            Pass ``None`` to disable progress reporting.
+            Async callback ``(model_id, downloaded_bytes, total_bytes)``.
         overwrite:
-            If ``False`` (default) and the file already exists, skip the
-            download and return a successful result.
-
-        Returns
-        -------
-        DownloadResult
-            Summary of the download; always check ``result.success``.
-
-        Raises
-        ------
-        DownloadError
-            On unrecoverable network or I/O errors.
+            Re-download from scratch even if file exists.
         """
         dest_filename = filename or self._filename_from_url(source_url, model_id)
         dest_path = self._models_dir / dest_filename
+        part_path = self._models_dir / f"{dest_filename}.part"
 
-        # Ensure destination directory exists.
         self._models_dir.mkdir(parents=True, exist_ok=True)
 
         if dest_path.exists() and not overwrite:
-            logger.info(
-                "ModelDownloader: '%s' already exists at %s; skipping download.",
-                model_id,
-                dest_path,
-            )
-            return DownloadResult(
-                model_id=model_id,
-                success=True,
-                path=dest_path,
-                bytes_downloaded=dest_path.stat().st_size,
-            )
+            if expected_sha256:
+                if not self.verify_checksum(dest_path, expected_sha256):
+                    logger.warning("Existing file failed checksum; re-downloading.")
+                else:
+                    self._auto_register(model_id, dest_path)
+                    return DownloadResult(
+                        model_id=model_id,
+                        success=True,
+                        path=dest_path,
+                        bytes_downloaded=dest_path.stat().st_size,
+                        checksum_verified=True,
+                    )
+            else:
+                self._auto_register(model_id, dest_path)
+                return DownloadResult(
+                    model_id=model_id,
+                    success=True,
+                    path=dest_path,
+                    bytes_downloaded=dest_path.stat().st_size,
+                    checksum_verified=False,
+                )
 
-        logger.info(
-            "ModelDownloader: [STUB] downloading '%s' from %s → %s",
-            model_id,
-            source_url,
-            dest_path,
-        )
+        # Check existing partial download for resume
+        downloaded = part_path.stat().st_size if part_path.exists() and not overwrite else 0
+        headers = {}
+        if downloaded > 0:
+            headers["Range"] = f"bytes={downloaded}-"
+            logger.info("Resuming download for '%s' from byte %d.", model_id, downloaded)
+        else:
+            mode = "wb"
 
         try:
-            result = await self._stub_download(
-                model_id=model_id,
-                source_url=source_url,
-                dest_path=dest_path,
-                progress_callback=progress_callback,
-            )
+            async with httpx.AsyncClient(follow_redirects=True, timeout=300.0) as client:
+                async with client.stream("GET", source_url, headers=headers) as response:
+                    if response.status_code == 416:  # Range Not Satisfiable -> complete or stale
+                        downloaded = 0
+                        headers.pop("Range", None)
+                        mode = "wb"
+                        response = await client.get(source_url)
+                    elif response.status_code in (200, 206):
+                        mode = "ab" if response.status_code == 206 else "wb"
+                        if response.status_code == 200:
+                            downloaded = 0
+                    else:
+                        response.raise_for_status()
+
+                    content_length = response.headers.get("content-length")
+                    total_bytes = (int(content_length) + downloaded) if content_length else -1
+
+                    async with await anyio.open_file(str(part_path), mode) as f:
+                        async for chunk in response.aiter_bytes(chunk_size=65536):
+                            await f.write(chunk)
+                            downloaded += len(chunk)
+                            if progress_callback:
+                                await progress_callback(
+                                    model_id, downloaded, max(downloaded, total_bytes)
+                                )
+
+            # Atomic rename on completion
+            if part_path.exists():
+                part_path.replace(dest_path)
+
         except Exception as exc:
-            logger.error(
-                "ModelDownloader: download of '%s' failed: %s", model_id, exc
-            )
-            raise DownloadError(str(exc)) from exc
+            logger.error("Download failed for '%s': %s", model_id, exc)
+            raise DownloadError(f"Download failed for '{model_id}': {exc}") from exc
 
-        if result.success:
-            logger.info(
-                "ModelDownloader: '%s' saved to %s (%d bytes).",
-                model_id,
-                dest_path,
-                result.bytes_downloaded,
-            )
+        checksum_ok = False
+        if expected_sha256:
+            checksum_ok = self.verify_checksum(dest_path, expected_sha256)
+            if not checksum_ok:
+                dest_path.unlink(missing_ok=True)
+                raise ChecksumError(f"SHA-256 checksum mismatch for downloaded model '{model_id}'.")
 
-        return result
+        self._auto_register(model_id, dest_path)
+        return DownloadResult(
+            model_id=model_id,
+            success=True,
+            path=dest_path,
+            bytes_downloaded=dest_path.stat().st_size,
+            checksum_verified=checksum_ok,
+        )
 
     async def download_from_huggingface(
         self,
@@ -173,81 +202,30 @@ class ModelDownloader:
         filename: str,
         *,
         token: str | None = None,
+        expected_sha256: str | None = None,
         progress_callback: ProgressCallback | None = None,
         overwrite: bool = False,
     ) -> DownloadResult:
-        """Convenience wrapper that constructs a Hugging Face Hub URL.
-
-        Parameters
-        ----------
-        repo_id:
-            HF repository identifier, e.g. ``"TheBloke/Llama-2-7B-GGUF"``.
-        filename:
-            File within the repo, e.g. ``"llama-2-7b.Q4_K_M.gguf"``.
-        token:
-            Optional Hugging Face access token for gated models.
-        progress_callback:
-            See :meth:`download`.
-        overwrite:
-            See :meth:`download`.
-        """
+        """Download a file from Hugging Face Hub."""
         url = f"https://huggingface.co/{repo_id}/resolve/main/{filename}"
-        if token:
-            logger.debug("ModelDownloader: HF token provided for gated model.")
         model_id = Path(filename).stem
         return await self.download(
             model_id=model_id,
             source_url=url,
             filename=filename,
+            expected_sha256=expected_sha256,
             progress_callback=progress_callback,
             overwrite=overwrite,
         )
 
-    # ------------------------------------------------------------------
-    # Stub / private helpers
-    # ------------------------------------------------------------------
-
-    async def _stub_download(
-        self,
-        model_id: str,
-        source_url: str,
-        dest_path: Path,
-        progress_callback: ProgressCallback | None,
-    ) -> DownloadResult:
-        """Simulate a download without real network I/O.
-
-        Replace the body of this method with ``httpx`` streaming calls
-        (or ``huggingface_hub.hf_hub_download``) in Phase 6.
-        """
-        fake_total = 1024 * 1024  # pretend 1 MiB
-        fake_downloaded = 0
-        chunk_size = 256 * 1024
-
-        while fake_downloaded < fake_total:
-            await asyncio.sleep(0)  # yield to event loop
-            fake_downloaded = min(fake_downloaded + chunk_size, fake_total)
-            if progress_callback:
-                await progress_callback(model_id, fake_downloaded, fake_total)
-
-        # STUB: write a sentinel file so tests/CLI can verify destination.
-        dest_path.write_text(
-            f"# STUB model file for {model_id}\n# Source: {source_url}\n"
-        )
-
-        return DownloadResult(
-            model_id=model_id,
-            success=True,
-            path=dest_path,
-            bytes_downloaded=fake_downloaded,
-        )
+    def _auto_register(self, model_id: str, path: Path) -> None:
+        """Register the downloaded model file into the ModelRegistry if present."""
+        if self._registry is not None:
+            self._registry.scan(self._models_dir)
 
     @staticmethod
     def _filename_from_url(url: str, model_id: str) -> str:
-        """Derive a local filename from *url*, falling back to *model_id*."""
         segment = url.rstrip("/").split("/")[-1]
         if segment and "." in segment:
             return segment
         return f"{model_id}.gguf"
-
-    def __repr__(self) -> str:
-        return f"ModelDownloader(models_dir={self._models_dir!r})"

@@ -48,7 +48,11 @@ class ShutdownSignalHandler:
                 loop.add_signal_handler(sig, self._handle, sig, loop)
         else:
             for sig in _HANDLED_SIGNALS:
-                signal.signal(sig, lambda s, _frame, _loop=loop: self._handle(s, _loop))
+                def make_handler(s: int):
+                    def handler(_signum: int, _frame: Any) -> None:
+                        self._handle(s, loop)
+                    return handler
+                signal.signal(sig, make_handler(sig))
 
         self._installed = True
         logger.debug("Shutdown signal handlers installed.")

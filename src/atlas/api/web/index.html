@@ -1,0 +1,1221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atlas OS Console</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #090b0f;
+  --surface: #11161d;
+  --surface-2: #171d26;
+  --surface-3: #202833;
+  --line: #273241;
+  --line-soft: #1b2430;
+  --text: #eef3f8;
+  --subtle: #a7b2c0;
+  --muted: #738093;
+  --brand: #25d0c7;
+  --brand-2: #62a8ff;
+  --good: #2ecc71;
+  --warn: #f3b340;
+  --bad: #ff6470;
+  --focus: 0 0 0 3px rgba(37, 208, 199, .22);
+  --mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+  --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  overflow: hidden;
+}
+button, input, select, textarea {
+  font: inherit;
+}
+button {
+  color: inherit;
+}
+.app {
+  display: grid;
+  grid-template-columns: 248px 1fr;
+  grid-template-rows: 56px 1fr;
+  height: 100vh;
+}
+.topbar {
+  grid-column: 1 / 3;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 20px;
+  background: #0f141b;
+  border-bottom: 1px solid var(--line);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 205px;
+}
+.mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background: var(--brand);
+  color: #03100f;
+  font-family: var(--mono);
+  font-weight: 800;
+}
+.brand-title {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+.top-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--subtle);
+  font-family: var(--mono);
+  font-size: 12px;
+  min-width: 0;
+}
+.top-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 26px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--subtle);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.dot.good { background: var(--good); }
+.dot.warn { background: var(--warn); }
+.dot.bad { background: var(--bad); }
+.sidebar {
+  min-width: 0;
+  background: #0d1218;
+  border-right: 1px solid var(--line-soft);
+  padding: 14px 10px;
+  overflow-y: auto;
+}
+.nav-group-title {
+  padding: 13px 12px 7px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.nav {
+  display: grid;
+  gap: 4px;
+}
+.nav button {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--subtle);
+  cursor: pointer;
+  text-align: left;
+}
+.nav button:hover {
+  background: rgba(255,255,255,.04);
+  color: var(--text);
+}
+.nav button.active {
+  border-color: rgba(37,208,199,.35);
+  background: rgba(37,208,199,.10);
+  color: var(--text);
+}
+.nav-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  background: var(--surface-2);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--brand);
+}
+.nav-label {
+  min-width: 0;
+}
+.nav-label strong {
+  display: block;
+  font-size: 13px;
+  line-height: 1.2;
+}
+.nav-label span {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nav-count {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.workspace {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.screen {
+  display: none;
+  height: 100%;
+  overflow-y: auto;
+  padding: 22px;
+}
+.screen.active {
+  display: block;
+}
+.screen-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: 0;
+}
+.screen-head p {
+  margin: 5px 0 0;
+  color: var(--subtle);
+  font-size: 13px;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.grid {
+  display: grid;
+  gap: 14px;
+}
+.grid.metrics {
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+}
+.grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.grid.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.panel, .card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.panel {
+  padding: 16px;
+}
+.panel + .panel, .grid + .panel, .panel + .grid {
+  margin-top: 14px;
+}
+.panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 13px;
+}
+.panel-title h2 {
+  margin: 0;
+  font-size: 14px;
+}
+.panel-title span {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.metric {
+  min-height: 124px;
+  padding: 14px;
+}
+.metric-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.metric-value {
+  margin-top: 14px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 25px;
+  font-weight: 800;
+}
+.bar {
+  height: 7px;
+  margin-top: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+.bar > span {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--brand);
+  transition: width .25s ease;
+}
+.row {
+  display: grid;
+  grid-template-columns: minmax(125px, .7fr) minmax(0, 1fr);
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 13px;
+}
+.row:last-child {
+  border-bottom: 0;
+}
+.label {
+  color: var(--muted);
+}
+.value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-family: var(--mono);
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 13px;
+}
+.btn:hover { background: var(--surface-3); }
+.btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+.btn.primary {
+  border-color: rgba(37,208,199,.6);
+  background: var(--brand);
+  color: #03100f;
+}
+.btn.danger {
+  border-color: rgba(255,100,112,.45);
+  background: rgba(255,100,112,.12);
+  color: #ffb7bd;
+}
+.btn.small {
+  min-height: 29px;
+  padding: 5px 9px;
+  font-size: 12px;
+}
+.field, select, textarea {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #0d1218;
+  color: var(--text);
+}
+textarea {
+  min-height: 74px;
+  resize: vertical;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.toolbar .field, .toolbar select {
+  max-width: 260px;
+}
+.list {
+  display: grid;
+  gap: 8px;
+}
+.item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  background: var(--surface-2);
+}
+.item h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.item p {
+  margin: 4px 0 0;
+  color: var(--subtle);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 23px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--subtle);
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.tag.good { color: #bff4d2; border-color: rgba(46,204,113,.35); background: rgba(46,204,113,.10); }
+.tag.warn { color: #ffe0a3; border-color: rgba(243,179,64,.35); background: rgba(243,179,64,.10); }
+.tag.bad { color: #ffc0c6; border-color: rgba(255,100,112,.35); background: rgba(255,100,112,.10); }
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 10px;
+}
+.quick {
+  min-height: 86px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+}
+.quick strong {
+  display: block;
+  margin-bottom: 5px;
+}
+.quick span {
+  color: var(--subtle);
+  font-size: 12px;
+}
+.chat-shell {
+  display: grid;
+  grid-template-rows: auto minmax(300px, 1fr) auto;
+  height: calc(100vh - 122px);
+  min-height: 520px;
+}
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0d1218;
+}
+.message {
+  max-width: min(760px, 86%);
+}
+.message.user {
+  margin-left: auto;
+}
+.bubble {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+.message.user .bubble {
+  background: var(--brand);
+  color: #03100f;
+}
+.stamp {
+  margin-top: 4px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+.composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 9px;
+  margin-top: 10px;
+}
+.terminal-frame {
+  height: calc(100vh - 150px);
+  min-height: 440px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #000;
+}
+#terminal-container {
+  width: 100%;
+  height: 100%;
+}
+.empty {
+  padding: 24px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--subtle);
+  text-align: center;
+}
+.toast-zone {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 1000;
+  display: grid;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 36px));
+}
+.toast {
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  box-shadow: 0 14px 40px rgba(0,0,0,.35);
+  font-size: 13px;
+}
+.toast.good { border-color: rgba(46,204,113,.45); }
+.toast.bad { border-color: rgba(255,100,112,.45); }
+.split-form {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: start;
+}
+@media (max-width: 1050px) {
+  .app { grid-template-columns: 78px 1fr; }
+  .brand { min-width: 0; }
+  .brand-title, .nav-label, .nav-count { display: none; }
+  .nav button { grid-template-columns: 1fr; justify-items: center; }
+  .grid.metrics, .grid.three, .quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  body { overflow: auto; }
+  .app { display: block; height: auto; min-height: 100vh; }
+  .topbar { position: sticky; top: 0; z-index: 20; }
+  .top-meta { display: none; }
+  .sidebar {
+    position: sticky;
+    top: 56px;
+    z-index: 15;
+    display: flex;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line-soft);
+    padding: 8px;
+  }
+  .nav-group-title { display: none; }
+  .nav { grid-auto-flow: column; grid-auto-columns: 58px; }
+  .screen { min-height: calc(100vh - 126px); padding: 14px; }
+  .screen-head { display: block; }
+  .actions { justify-content: flex-start; margin-top: 12px; }
+  .grid.metrics, .grid.two, .grid.three, .quick-grid, .split-form { grid-template-columns: 1fr; }
+  .chat-shell, .terminal-frame { height: 68vh; min-height: 420px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark">A</div>
+      <div class="brand-title">ATLAS OS</div>
+    </div>
+    <div class="top-meta">
+      <span id="top-host">atlas</span>
+      <span>/</span>
+      <span id="top-ip">127.0.0.1</span>
+      <span>/</span>
+      <span id="top-env">development</span>
+    </div>
+    <div class="top-actions">
+      <button class="btn small" id="auth-open" title="Set API key or JWT">Auth</button>
+      <span class="pill"><span class="dot" id="api-dot"></span><span id="api-status">Checking</span></span>
+      <span class="pill" id="clock">--:--:--</span>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <div class="nav">
+      <div class="nav-group-title">Operate</div>
+      <button class="active" data-screen="dashboard"><span class="nav-icon">DB</span><span class="nav-label"><strong>Dashboard</strong><span>Live OS command center</span></span><span class="nav-count" id="nav-health">--</span></button>
+      <button data-screen="chat"><span class="nav-icon">AI</span><span class="nav-label"><strong>AI Chat</strong><span>Sessions and inference</span></span><span class="nav-count" id="nav-sessions">0</span></button>
+      <button data-screen="models"><span class="nav-icon">LM</span><span class="nav-label"><strong>Models</strong><span>Scan, load, unload</span></span><span class="nav-count" id="nav-models">0</span></button>
+      <button data-screen="providers"><span class="nav-icon">PR</span><span class="nav-label"><strong>Providers</strong><span>Local and cloud engines</span></span><span class="nav-count" id="nav-providers">0</span></button>
+      <div class="nav-group-title">Device</div>
+      <button data-screen="network"><span class="nav-icon">NW</span><span class="nav-label"><strong>Network</strong><span>Interfaces and Wi-Fi</span></span><span class="nav-count" id="nav-net">--</span></button>
+      <button data-screen="voice"><span class="nav-icon">VO</span><span class="nav-label"><strong>Voice</strong><span>Audio, STT, TTS</span></span><span class="nav-count" id="nav-voice">--</span></button>
+      <button data-screen="memory"><span class="nav-icon">ME</span><span class="nav-label"><strong>Memory</strong><span>Persistent knowledge</span></span><span class="nav-count" id="nav-memory">0</span></button>
+      <button data-screen="plugins"><span class="nav-icon">PL</span><span class="nav-label"><strong>Plugins</strong><span>Capabilities and access</span></span><span class="nav-count" id="nav-plugins">0</span></button>
+      <div class="nav-group-title">Control</div>
+      <button data-screen="system"><span class="nav-icon">SY</span><span class="nav-label"><strong>System</strong><span>Health and power</span></span><span class="nav-count" id="nav-runtime">--</span></button>
+      <button data-screen="terminal"><span class="nav-icon">CL</span><span class="nav-label"><strong>Terminal</strong><span>Atlas CLI bridge</span></span><span class="nav-count">WS</span></button>
+    </div>
+  </aside>
+
+  <main class="workspace">
+    <section class="screen active" id="screen-dashboard">
+      <div class="screen-head">
+        <div><h1>Dashboard</h1><p>One place to see runtime health, resource pressure, and every Atlas subsystem.</p></div>
+        <div class="actions"><button class="btn primary" onclick="refreshAll()">Refresh</button><button class="btn" onclick="showScreen('chat')">Open Chat</button></div>
+      </div>
+      <div class="grid metrics">
+        <div class="card metric"><div class="metric-top"><span>CPU Load</span><span id="cpu-count">-- cores</span></div><div class="metric-value" id="m-cpu">--%</div><div class="bar"><span id="m-cpu-bar"></span></div></div>
+        <div class="card metric"><div class="metric-top"><span>Memory</span><span id="mem-total">-- GB</span></div><div class="metric-value" id="m-ram">--%</div><div class="bar"><span id="m-ram-bar"></span></div></div>
+        <div class="card metric"><div class="metric-top"><span>Storage</span><span id="disk-total">-- GB</span></div><div class="metric-value" id="m-disk">--%</div><div class="bar"><span id="m-disk-bar"></span></div></div>
+        <div class="card metric"><div class="metric-top"><span>Runtime</span><span id="runtime-state">--</span></div><div class="metric-value" id="m-uptime">--</div><div class="bar"><span style="width:100%;background:var(--good)"></span></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><h2>Quick Access</h2><span>Connected modules</span></div>
+        <div class="quick-grid">
+          <button class="quick" onclick="showScreen('models')"><strong>Model Control</strong><span id="quick-models">No models loaded</span></button>
+          <button class="quick" onclick="showScreen('memory')"><strong>Knowledge Memory</strong><span id="quick-memory">No memories stored</span></button>
+          <button class="quick" onclick="showScreen('network')"><strong>Network Stack</strong><span id="quick-network">Checking interfaces</span></button>
+          <button class="quick" onclick="showScreen('plugins')"><strong>Plugin System</strong><span id="quick-plugins">No plugins discovered</span></button>
+        </div>
+      </div>
+      <div class="grid two">
+        <div class="panel"><div class="panel-title"><h2>AI Core</h2><span id="ai-core-tag">--</span></div><div id="dashboard-ai"></div></div>
+        <div class="panel"><div class="panel-title"><h2>Device</h2><span id="device-tag">--</span></div><div id="dashboard-device"></div></div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-chat">
+      <div class="screen-head">
+        <div><h1>AI Chat</h1><p>Use loaded local models or configured providers through the Atlas chat API.</p></div>
+        <div class="actions"><button class="btn" onclick="newChatSession()">New Session</button><button class="btn" onclick="loadSessions()">Sessions</button></div>
+      </div>
+      <div class="chat-shell">
+        <div class="toolbar">
+          <select id="chat-model"></select>
+          <select id="chat-session"></select>
+          <input class="field" id="chat-temp" type="number" min="0" max="2" step="0.1" value="0.7" title="Temperature">
+        </div>
+        <div class="messages" id="chat-messages"><div class="empty">Choose a model, then send a message to Atlas.</div></div>
+        <div class="composer"><textarea id="chat-input" placeholder="Ask Atlas to reason, operate, or explain..."></textarea><button class="btn primary" id="chat-send" onclick="sendChat()">Send</button></div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-models">
+      <div class="screen-head">
+        <div><h1>Models</h1><p>Scan the model registry, load inference targets, unload idle models, and add new GGUF files.</p></div>
+        <div class="actions"><button class="btn" onclick="postJson('/v1/models/scan',{}).then(loadModels)">Scan</button></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><h2>Installed Models</h2><span id="models-summary">--</span></div>
+        <div id="models-list" class="list"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><h2>Download Model</h2><span>Hugging Face repo or direct URL</span></div>
+        <div class="split-form">
+          <input class="field" id="download-id" placeholder="model id">
+          <input class="field" id="download-source" placeholder="repo id or direct URL">
+          <input class="field" id="download-file" placeholder="filename for repo">
+          <button class="btn primary" onclick="downloadModel()">Download</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-providers">
+      <div class="screen-head"><div><h1>Providers</h1><p>Inspect every registered AI provider and its availability.</p></div><div class="actions"><button class="btn" onclick="loadProviders()">Refresh</button></div></div>
+      <div class="panel"><div class="panel-title"><h2>Provider Registry</h2><span id="providers-summary">--</span></div><div id="providers-list" class="list"></div></div>
+    </section>
+
+    <section class="screen" id="screen-network">
+      <div class="screen-head"><div><h1>Network</h1><p>Review connectivity, interfaces, devices, and Wi-Fi operations.</p></div><div class="actions"><button class="btn" onclick="scanWifi()">Scan Wi-Fi</button><button class="btn" onclick="loadNetwork()">Refresh</button></div></div>
+      <div class="grid two"><div class="panel"><div class="panel-title"><h2>Status</h2><span id="network-summary">--</span></div><div id="network-status"></div></div><div class="panel"><div class="panel-title"><h2>Wi-Fi Connect</h2><span>NetworkManager when available</span></div><input class="field" id="wifi-ssid" placeholder="SSID"><br><br><input class="field" id="wifi-password" type="password" placeholder="Password"><br><br><button class="btn primary" onclick="connectWifi()">Connect</button> <button class="btn danger" onclick="disconnectWifi()">Disconnect</button></div></div>
+      <div class="panel"><div class="panel-title"><h2>Interfaces</h2><span id="interfaces-summary">--</span></div><div id="interfaces-list" class="list"></div></div>
+      <div class="panel"><div class="panel-title"><h2>Wi-Fi Networks</h2><span id="wifi-summary">Scan to populate</span></div><div id="wifi-list" class="list"></div></div>
+    </section>
+
+    <section class="screen" id="screen-voice">
+      <div class="screen-head"><div><h1>Voice</h1><p>Monitor wake word, STT, TTS, and audio device availability.</p></div><div class="actions"><button class="btn" onclick="loadVoice()">Refresh</button></div></div>
+      <div class="grid two"><div class="panel"><div class="panel-title"><h2>Voice Engine</h2><span id="voice-summary">--</span></div><div id="voice-status"></div></div><div class="panel"><div class="panel-title"><h2>Speak Test</h2><span>TTS route</span></div><textarea id="tts-text" placeholder="Text to speak through Atlas..."></textarea><br><br><button class="btn primary" onclick="speak()">Speak</button></div></div>
+      <div class="panel"><div class="panel-title"><h2>Audio Devices</h2><span id="audio-summary">--</span></div><div id="audio-devices" class="list"></div></div>
+    </section>
+
+    <section class="screen" id="screen-memory">
+      <div class="screen-head"><div><h1>Memory</h1><p>Create, search, recall, and delete persistent Atlas knowledge entries.</p></div><div class="actions"><button class="btn" onclick="loadMemories()">Refresh</button></div></div>
+      <div class="panel">
+        <div class="panel-title"><h2>Add Memory</h2><span>Persisted locally</span></div>
+        <div class="split-form"><select id="memory-category"><option>fact</option><option>preference</option><option>rule</option><option>note</option><option>system</option><option>general</option></select><input class="field" id="memory-text" placeholder="What should Atlas remember?"><button class="btn primary" onclick="saveMemory()">Remember</button></div>
+      </div>
+      <div class="panel"><div class="toolbar"><input class="field" id="memory-search" placeholder="Search or recall memory..." oninput="renderMemories()"><button class="btn" onclick="recallMemory()">Semantic Recall</button></div><div id="memory-list" class="list"></div></div>
+    </section>
+
+    <section class="screen" id="screen-plugins">
+      <div class="screen-head"><div><h1>Plugins</h1><p>Discover installed plugins and control enabled states.</p></div><div class="actions"><button class="btn" onclick="loadPlugins()">Refresh</button></div></div>
+      <div class="panel"><div class="panel-title"><h2>Installed Plugins</h2><span id="plugins-summary">--</span></div><div id="plugins-list" class="list"></div></div>
+    </section>
+
+    <section class="screen" id="screen-system">
+      <div class="screen-head"><div><h1>System</h1><p>Runtime health, configuration paths, and guarded power actions.</p></div><div class="actions"><button class="btn" onclick="loadSystem()">Refresh</button></div></div>
+      <div class="grid two"><div class="panel"><div class="panel-title"><h2>Platform</h2><span id="platform-summary">--</span></div><div id="system-platform"></div></div><div class="panel"><div class="panel-title"><h2>Service Health</h2><span id="health-summary">--</span></div><div id="system-health"></div></div></div>
+      <div class="panel"><div class="panel-title"><h2>Power</h2><span>Admin token required</span></div><button class="btn danger" onclick="powerAction('reboot')">Reboot</button> <button class="btn danger" onclick="powerAction('shutdown')">Shutdown</button></div>
+    </section>
+
+    <section class="screen" id="screen-terminal">
+      <div class="screen-head"><div><h1>Terminal</h1><p>Interactive Atlas CLI bridge over the local WebSocket endpoint.</p></div><div class="actions"><button class="btn" onclick="initTerminal(true)">Reconnect</button></div></div>
+      <div class="terminal-frame"><div id="terminal-container"></div></div>
+    </section>
+  </main>
+</div>
+
+<div class="toast-zone" id="toast-zone"></div>
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js"></script>
+<script>
+const state = {
+  active: "dashboard",
+  token: localStorage.getItem("atlasToken") || "",
+  system: null,
+  health: null,
+  models: [],
+  providers: [],
+  network: null,
+  memories: [],
+  plugins: [],
+  sessions: [],
+  terminal: null,
+  terminalWs: null,
+  fitAddon: null,
+  chatHistory: [],
+  chatBusy: false
+};
+
+const $ = (id) => document.getElementById(id);
+const escapeHtml = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+const bytes = (n) => !n ? "--" : n > 1073741824 ? `${(n/1073741824).toFixed(2)} GB` : `${(n/1048576).toFixed(1)} MB`;
+const duration = (sec) => {
+  sec = Math.max(0, Number(sec || 0));
+  const d = Math.floor(sec / 86400);
+  const h = Math.floor((sec % 86400) / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (d) return `${d}d ${h}h`;
+  if (h) return `${h}h ${m}m`;
+  return `${m}m`;
+};
+
+function headers(json = true) {
+  const h = {};
+  if (json) h["Content-Type"] = "application/json";
+  if (state.token) h.Authorization = `Bearer ${state.token}`;
+  return h;
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, {...opts, headers: {...headers(opts.body !== undefined), ...(opts.headers || {})}});
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${await res.text()}`);
+  const type = res.headers.get("content-type") || "";
+  return type.includes("json") ? res.json() : res.text();
+}
+
+async function postJson(path, body = {}) {
+  return api(path, {method: "POST", body: JSON.stringify(body)});
+}
+
+function toast(message, tone = "info") {
+  const node = document.createElement("div");
+  node.className = `toast ${tone}`;
+  node.textContent = message;
+  $("toast-zone").appendChild(node);
+  setTimeout(() => node.remove(), 4200);
+}
+
+function setApiStatus(ok, text) {
+  $("api-dot").className = `dot ${ok ? "good" : "bad"}`;
+  $("api-status").textContent = text;
+}
+
+function rows(items) {
+  return items.map(([label, value]) => `<div class="row"><div class="label">${escapeHtml(label)}</div><div class="value">${escapeHtml(value)}</div></div>`).join("");
+}
+
+function empty(text) {
+  return `<div class="empty">${escapeHtml(text)}</div>`;
+}
+
+function showScreen(name) {
+  state.active = name;
+  document.querySelectorAll(".screen").forEach(s => s.classList.toggle("active", s.id === `screen-${name}`));
+  document.querySelectorAll(".nav button[data-screen]").forEach(b => b.classList.toggle("active", b.dataset.screen === name));
+  const loaders = {chat: loadChatData, models: loadModels, providers: loadProviders, network: loadNetwork, voice: loadVoice, memory: loadMemories, plugins: loadPlugins, system: loadSystem, terminal: initTerminal};
+  if (loaders[name]) loaders[name]();
+}
+
+document.querySelectorAll(".nav button[data-screen]").forEach(btn => btn.addEventListener("click", () => showScreen(btn.dataset.screen)));
+$("auth-open").addEventListener("click", () => {
+  const token = prompt("Paste an Atlas API key or JWT. Leave blank for local unauthenticated access.", state.token);
+  if (token === null) return;
+  state.token = token.trim();
+  if (state.token) localStorage.setItem("atlasToken", state.token);
+  else localStorage.removeItem("atlasToken");
+  toast(state.token ? "Auth token saved for this browser." : "Using local unauthenticated access.", "good");
+  refreshAll();
+});
+
+setInterval(() => $("clock").textContent = new Date().toLocaleTimeString(), 1000);
+
+async function refreshAll() {
+  await Promise.allSettled([loadSystem(), loadModels(), loadProviders(), loadNetwork(), loadVoice(), loadMemories(), loadPlugins(), loadSessions()]);
+}
+
+async function loadSystem() {
+  try {
+    const [info, health] = await Promise.all([api("/v1/system/info"), api("/v1/health")]);
+    state.system = info;
+    state.health = health;
+    setApiStatus(true, "Online");
+    $("top-host").textContent = info.hostname || "atlas";
+    $("top-ip").textContent = info.ip_address || "127.0.0.1";
+    $("top-env").textContent = info.environment || "development";
+    $("nav-health").textContent = health.status || "ok";
+    $("nav-runtime").textContent = info.runtime_state || "--";
+    $("runtime-state").textContent = info.runtime_state || "--";
+    $("cpu-count").textContent = `${info.cpu_count || "--"} cores`;
+    $("mem-total").textContent = `${info.memory_total_gb || "--"} GB`;
+    $("disk-total").textContent = `${info.disk_total_gb || "--"} GB`;
+    $("m-cpu").textContent = `${Number(info.cpu_percent || 0).toFixed(1)}%`;
+    $("m-cpu-bar").style.width = `${Math.min(100, info.cpu_percent || 0)}%`;
+    $("m-ram").textContent = `${Number(info.memory_percent || 0).toFixed(1)}%`;
+    $("m-ram-bar").style.width = `${Math.min(100, info.memory_percent || 0)}%`;
+    $("m-disk").textContent = `${Number(info.disk_percent || 0).toFixed(1)}%`;
+    $("m-disk-bar").style.width = `${Math.min(100, info.disk_percent || 0)}%`;
+    $("m-uptime").textContent = duration(info.uptime_seconds);
+    $("dashboard-device").innerHTML = rows([
+      ["Host", info.hostname],
+      ["IP address", info.ip_address],
+      ["Platform", info.os],
+      ["Architecture", info.arch],
+      ["Temperature", info.temperature_c == null ? "Unavailable" : `${Number(info.temperature_c).toFixed(1)} C`]
+    ]);
+    $("device-tag").textContent = info.platform || "--";
+    $("system-platform").innerHTML = rows([
+      ["Application", info.app_name],
+      ["Environment", info.environment],
+      ["Python", info.python],
+      ["Data directory", info.config?.data_dir],
+      ["Models directory", info.config?.models_dir],
+      ["Plugins directory", info.config?.plugins_dir],
+      ["Log level", info.config?.log_level]
+    ]);
+    $("platform-summary").textContent = `${info.registered_services || 0} services`;
+    $("system-health").innerHTML = health.services?.length
+      ? health.services.map(s => `<div class="item"><div><h3>${escapeHtml(s.name)}</h3><p>${escapeHtml(s.message || "No message")}</p></div><span class="tag ${s.status === "healthy" ? "good" : "warn"}">${escapeHtml(s.status)}</span></div>`).join("")
+      : rows([["Status", health.status], ["Generated", health.timestamp || "Now"]]);
+    $("health-summary").textContent = health.status || "--";
+  } catch (err) {
+    setApiStatus(false, "Offline");
+    $("system-platform").innerHTML = empty(err.message);
+  }
+}
+
+async function loadModels() {
+  try {
+    const data = await api("/v1/models");
+    state.models = Array.isArray(data) ? data : (data.models || data.data || []);
+    const loaded = state.models.filter(m => m.loaded);
+    $("nav-models").textContent = state.models.length;
+    $("models-summary").textContent = `${loaded.length} loaded / ${state.models.length} registered`;
+    $("quick-models").textContent = loaded.length ? `${loaded.map(m => m.display_name || m.model_id || m.id).join(", ")} loaded` : `${state.models.length} available`;
+    $("ai-core-tag").textContent = loaded[0]?.provider || "idle";
+    $("dashboard-ai").innerHTML = rows([
+      ["Active model", loaded[0]?.display_name || loaded[0]?.model_id || "None"],
+      ["Registered models", state.models.length],
+      ["Providers", state.providers.length],
+      ["Chat sessions", state.sessions.length]
+    ]);
+    const select = $("chat-model");
+    const current = select.value;
+    select.innerHTML = state.models.length ? state.models.map(m => `<option value="${escapeHtml(m.model_id || m.id)}">${escapeHtml(m.loaded ? "* " : "")}${escapeHtml(m.display_name || m.model_id || m.id)}</option>`).join("") : `<option value="default">default</option>`;
+    if (current) select.value = current;
+    $("models-list").innerHTML = state.models.length ? state.models.map(m => {
+      const id = m.model_id || m.id || m.name;
+      return `<div class="item"><div><h3>${escapeHtml(m.display_name || id)}</h3><p>${escapeHtml(m.provider || "provider")} / ${bytes(m.size_bytes)} ${m.description ? "/ " + escapeHtml(m.description) : ""}</p></div><div class="actions"><span class="tag ${m.loaded ? "good" : ""}">${m.loaded ? "loaded" : "available"}</span><button class="btn small primary" onclick="modelOp('${escapeHtml(id)}','load')">Load</button><button class="btn small" onclick="modelOp('${escapeHtml(id)}','unload')">Unload</button><button class="btn small danger" onclick="modelOp('${escapeHtml(id)}','delete')">Remove</button></div></div>`;
+    }).join("") : empty("No models registered. Put GGUF files in the models directory or use the download form.");
+  } catch (err) {
+    $("models-list").innerHTML = empty(err.message);
+  }
+}
+
+async function modelOp(id, action) {
+  try {
+    if (action === "delete") {
+      if (!confirm(`Remove model '${id}' from the registry?`)) return;
+      await api(`/v1/models/${encodeURIComponent(id)}`, {method: "DELETE"});
+    } else {
+      await postJson(`/v1/models/${encodeURIComponent(id)}/${action}`, {model_id: id});
+    }
+    toast(`Model ${action} completed.`, "good");
+    await loadModels();
+  } catch (err) {
+    toast(err.message, "bad");
+  }
+}
+
+async function downloadModel() {
+  const model_id = $("download-id").value.trim();
+  const source = $("download-source").value.trim();
+  const filename = $("download-file").value.trim();
+  if (!model_id || !source) return toast("Model id and source are required.", "bad");
+  const body = source.startsWith("http") ? {model_id, url: source} : {model_id, repo: source, filename};
+  try {
+    await postJson("/v1/models/download", body);
+    toast("Download started or completed.", "good");
+    loadModels();
+  } catch (err) {
+    toast(err.message, "bad");
+  }
+}
+
+async function loadProviders() {
+  try {
+    const data = await api("/v1/providers");
+    state.providers = Array.isArray(data) ? data : [];
+    $("nav-providers").textContent = state.providers.length;
+    $("providers-summary").textContent = `${state.providers.length} providers`;
+    $("providers-list").innerHTML = state.providers.length ? state.providers.map(p => `<div class="item"><div><h3>${escapeHtml(p.name)}</h3><p>${escapeHtml(p.description || p.role || "")}</p></div><div class="actions"><span class="tag ${p.available ? "good" : "bad"}">${p.available ? "available" : "offline"}</span><span class="tag">${escapeHtml(p.models_count || 0)} models</span></div></div>`).join("") : empty("No providers registered.");
+  } catch (err) {
+    $("providers-list").innerHTML = empty(err.message);
+  }
+}
+
+async function loadSessions() {
+  try {
+    const data = await api("/v1/sessions");
+    state.sessions = data.sessions || [];
+    $("nav-sessions").textContent = state.sessions.length;
+    const select = $("chat-session");
+    select.innerHTML = `<option value="">New transient session</option>` + state.sessions.map(s => `<option value="${escapeHtml(s.session_id)}">${escapeHtml(s.model || "model")} / ${s.message_count} msgs</option>`).join("");
+  } catch {
+    $("chat-session").innerHTML = `<option value="">New transient session</option>`;
+  }
+}
+
+async function loadChatData() {
+  await Promise.allSettled([loadModels(), loadSessions()]);
+}
+
+function newChatSession() {
+  state.chatHistory = [];
+  $("chat-session").value = "";
+  $("chat-messages").innerHTML = empty("New session ready.");
+}
+
+function addMessage(role, content) {
+  if ($("chat-messages").querySelector(".empty")) $("chat-messages").innerHTML = "";
+  const node = document.createElement("div");
+  node.className = `message ${role}`;
+  node.innerHTML = `<div class="bubble"></div><div class="stamp">${new Date().toLocaleTimeString()}</div>`;
+  node.querySelector(".bubble").textContent = content;
+  $("chat-messages").appendChild(node);
+  $("chat-messages").scrollTop = $("chat-messages").scrollHeight;
+  return node.querySelector(".bubble");
+}
+
+async function sendChat() {
+  if (state.chatBusy) return;
+  const text = $("chat-input").value.trim();
+  if (!text) return;
+  const model = $("chat-model").value || "default";
+  state.chatBusy = true;
+  $("chat-send").textContent = "Sending";
+  $("chat-input").value = "";
+  state.chatHistory.push({role: "user", content: text});
+  addMessage("user", text);
+  const bubble = addMessage("assistant", "");
+  try {
+    const res = await fetch("/v1/chat/completions/stream", {
+      method: "POST",
+      headers: headers(true),
+      body: JSON.stringify({model, messages: state.chatHistory, temperature: Number($("chat-temp").value || 0.7), session_id: $("chat-session").value || null})
+    });
+    if (!res.ok || !res.body) throw new Error(await res.text());
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let full = "";
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      for (const line of decoder.decode(value).split("\n")) {
+        if (!line.startsWith("data: ")) continue;
+        const raw = line.slice(6).trim();
+        if (raw === "[DONE]") continue;
+        const chunk = JSON.parse(raw);
+        if (chunk.error) throw new Error(chunk.error);
+        full += chunk.choices?.[0]?.delta?.content || "";
+        bubble.textContent = full;
+      }
+      $("chat-messages").scrollTop = $("chat-messages").scrollHeight;
+    }
+    state.chatHistory.push({role: "assistant", content: full});
+  } catch (err) {
+    bubble.textContent = `Error: ${err.message}`;
+    toast(err.message, "bad");
+  } finally {
+    state.chatBusy = false;
+    $("chat-send").textContent = "Send";
+    loadSessions();
+  }
+}
+
+async function loadNetwork() {
+  try {
+    const data = await api("/v1/network/status");
+    state.network = data;
+    $("nav-net").textContent = data.connected ? "on" : "off";
+    $("quick-network").textContent = data.connected ? `${data.primary_device || "connected"} online` : "Offline";
+    $("network-summary").textContent = data.connectivity || (data.connected ? "connected" : "offline");
+    $("network-status").innerHTML = rows([
+      ["Connected", data.connected ? "Yes" : "No"],
+      ["Connectivity", data.connectivity || "--"],
+      ["Primary device", data.primary_device || "--"],
+      ["Primary type", data.primary_type || "--"],
+      ["Active SSID", data.active_ssid || "--"]
+    ]);
+    const ifaces = data.interfaces || [];
+    $("interfaces-summary").textContent = `${ifaces.length} interfaces`;
+    $("interfaces-list").innerHTML = ifaces.length ? ifaces.map(i => `<div class="item"><div><h3>${escapeHtml(i.name)}</h3><p>${escapeHtml(i.ipv4 || i.ipv6 || "No IP")} / ${escapeHtml(i.mac || "no mac")}</p></div><div class="actions"><span class="tag ${i.up ? "good" : ""}">${i.up ? "up" : "down"}</span><span class="tag">${escapeHtml(i.speed_mbps || 0)} Mbps</span></div></div>`).join("") : empty("No network interfaces reported.");
+  } catch (err) {
+    $("network-status").innerHTML = empty(err.message);
+  }
+}
+
+async function scanWifi() {
+  $("wifi-list").innerHTML = empty("Scanning...");
+  try {
+    const nets = await api("/v1/network/wifi/scan");
+    $("wifi-summary").textContent = `${nets.length} networks`;
+    $("wifi-list").innerHTML = nets.length ? nets.map(n => `<div class="item"><div><h3>${escapeHtml(n.ssid || "(hidden)")}</h3><p>${escapeHtml(n.security || "open")} / ${escapeHtml(n.frequency_mhz || "--")} MHz</p></div><div class="actions"><span class="tag ${n.in_use ? "good" : ""}">${n.in_use ? "active" : `${n.signal_strength || 0}%`}</span><button class="btn small" onclick="$('wifi-ssid').value='${escapeHtml(n.ssid || "")}'">Use</button></div></div>`).join("") : empty("No Wi-Fi networks found.");
+  } catch (err) {
+    $("wifi-list").innerHTML = empty(err.message);
+  }
+}
+
+async function connectWifi() {
+  try {
+    await postJson("/v1/network/wifi/connect", {ssid: $("wifi-ssid").value.trim(), password: $("wifi-password").value});
+    toast("Wi-Fi connection requested.", "good");
+    loadNetwork();
+  } catch (err) {
+    toast(err.message, "bad");
+  }
+}
+
+async function disconnectWifi() {
+  try {
+    await postJson("/v1/network/wifi/disconnect", {});
+    toast("Wi-Fi disconnect requested.", "good");
+    loadNetwork();
+  } catch (err) {
+    toast(err.message, "bad");
+  }
+}
+
+async function loadVoice() {
+  try {
+    const [status, devices] = await Promise.all([api("/v1/voice/status"), api("/v1/voice/devices")]);
+    $("nav-voice").textContent = status.audio?.available ? "on" : "idle";
+    $("voice-summary").textContent = status.audio?.available ? "audio ready" : "limited";
+    $("voice-status").innerHTML = rows([
+      ["Wake word", status.wake_word?.enabled ? "Enabled" : "Disabled"],
+      ["Wake model", status.wake_word?.model || "--"],
+      ["STT", `${status.stt?.engine || "--"} / ${status.stt?.model || "--"}`],
+      ["TTS", `${status.tts?.engine || "--"} / ${status.tts?.voice || "--"}`],
+      ["Audio", status.audio?.available ? "Available" : "Unavailable"]
+    ]);
+    const combined = [...(devices.inputs || []).map(d => ({...d, kind:"input"})), ...(devices.outputs || []).map(d => ({...d, kind:"output"}))];
+    $("audio-summary").textContent = `${combined.length} devices`;
+    $("audio-devices").innerHTML = combined.length ? combined.map(d => `<div class="item"><div><h3>${escapeHtml(d.name)}</h3><p>${escapeHtml(d.kind)} / ${escapeHtml(d.channels)} channels / ${escapeHtml(d.default_sample_rate)} Hz</p></div><span class="tag ${d.is_default ? "good" : ""}">${d.is_default ? "default" : d.kind}</span></div>`).join("") : empty("No audio devices available.");
+  } catch (err) {
+    $("voice-status").innerHTML = empty(err.message);
+  }
+}
+
+async function speak() {
+  const text = $("tts-text").value.trim();
+  if (!text) return toast("Enter text to speak.", "bad");
+  try {
+    await postJson("/v1/voice/speak", {text});
+    toast("Speech request completed.", "good");
+  } catch (err) {
+    toast(err.message, "bad");
+  }
+}
+
+async function loadMemories() {
+  try {
+    const data = await api("/v1/memory/list");
+    state.memories = data.entries || [];
+    $("nav-memory").textContent = state.memories.length;
+    $("quick-memory").textContent = `${state.memories.length} memories stored`;
+    renderMemories();
+  } catch (err) {
+    $("memory-list").innerHTML = empty(err.message);
+  }
+}
+
+function renderMemories(items = null) {
+  const q = $("memory-search").value?.toLowerCase() || "";
+  const list = items || state.memories.filter(m => !q || `${m.text} ${m.category} ${m.source}`.toLowerCase().includes(q));
+  $("memory-list").innerHTML = list.length ? list.map(m => `<div class="item"><div><h3>${escapeHtml(m.category || "general")}</h3><p>${escapeHtml(m.text)}</p><p>${escapeHtml(m.timestamp || "")} / ${escapeHtml(m.source || "system")}</p></div><button class="btn small danger" onclick="deleteMemory('${escapeHtml(m.id)}')">Delete</button></div>`).join("") : empty("No matching memories.");
+}
+
+async function saveMemory() {
+  const text = $("memory-text").value.trim();
+  if (!text) return toast("Memory text is required.", "bad");
+  try {
+    await postJson("/v1/memory/remember", {text, category: $("memory-category").value, source: "web-ui"});
+    $("memory-text").value = "";
+    toast("Memory saved.", "good");
+    loadMemories();
+  } catch (err) {
+    toast(err.message, "bad");
+  }
+}
+
+async function recallMemory() {
+  const query = $("memory-search").value.trim();
+  if (!query) return renderMemories();
+  try {
+    const data = await postJson("/v1/memory/recall", {query, top_k: 10});
+    renderMemories((data.results || []).map((r, idx) => ({id: `recall-${idx}`, text: r.text, category: `score ${Number(r.score || 0).toFixed(3)}`, source: "semantic recall"})));
+  } catch (err) {
+    toast(err.message, "bad");
+  }
+}
+
+async function deleteMemory(id) {
+  if (!confirm("Delete this memory?")) return;
+  try {
+    await api(`/v1/memory/${encodeURIComponent(id)}`, {method: "DELETE"});
+    toast("Memory deleted.", "good");
+    loadMemories();
+  } catch (err) {
+    toast(err.message, "bad");
+  }
+}
+
+async function loadPlugins() {
+  try {
+    const data = await api("/v1/plugins");
+    state.plugins = data.plugins || [];
+    $("nav-plugins").textContent = state.plugins.length;
+    $("quick-plugins").textContent = `${state.plugins.length} plugins discovered`;
+    $("plugins-summary").textContent = `${state.plugins.filter(p => p.enabled).length} enabled / ${state.plugins.length} discovered`;
+    $("plugins-list").innerHTML = state.plugins.length ? state.plugins.map(p => `<div class="item"><div><h3>${escapeHtml(p.name)}</h3><p>${escapeHtml(p.description || "No description")} ${p.error ? "/ " + escapeHtml(p.error) : ""}</p><p>${escapeHtml(p.author || "")} / v${escapeHtml(p.version || "")}</p></div><div class="actions"><span class="tag ${p.enabled ? "good" : ""}">${p.enabled ? "enabled" : "disabled"}</span><button class="btn small ${p.enabled ? "" : "primary"}" onclick="pluginOp('${escapeHtml(p.name)}','${p.enabled ? "disable" : "enable"}')">${p.enabled ? "Disable" : "Enable"}</button></div></div>`).join("") : empty("No plugins discovered in the plugins directory.");
+  } catch (err) {
+    $("plugins-list").innerHTML = empty(err.message);
+  }
+}
+
+async function pluginOp(name, action) {
+  try {
+    await postJson(`/v1/plugins/${encodeURIComponent(name)}/${action}`, {});
+    toast(`Plugin ${action} completed.`, "good");
+    loadPlugins();
+  } catch (err) {
+    toast(err.message, "bad");
+  }
+}
+
+async function powerAction(action) {
+  if (!confirm(`${action} Atlas OS? This requires an admin token.`)) return;
+  try {
+    await postJson(`/v1/system/${action}`, {});
+    toast(`${action} requested.`, "good");
+  } catch (err) {
+    toast(err.message, "bad");
+  }
+}
+
+function initTerminal(force = false) {
+  if (state.terminal && !force) return;
+  if (state.terminalWs) state.terminalWs.close();
+  const target = $("terminal-container");
+  target.innerHTML = "";
+  if (!window.Terminal || !window.FitAddon) {
+    target.innerHTML = empty("Terminal library unavailable. Check local network access to static assets.");
+    return;
+  }
+  state.terminal = new Terminal({cursorBlink: true, fontFamily: '"JetBrains Mono", "Cascadia Mono", monospace', fontSize: 14, theme: {background: "#000000", foreground: "#eef3f8", cursor: "#25d0c7"}});
+  state.fitAddon = new FitAddon.FitAddon();
+  state.terminal.loadAddon(state.fitAddon);
+  state.terminal.open(target);
+  state.fitAddon.fit();
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  state.terminalWs = new WebSocket(`${proto}://${location.host}/v1/terminal/ws`);
+  state.terminalWs.onopen = () => state.terminal.write("\x1b[32mAtlas CLI connected\x1b[0m\r\n");
+  state.terminalWs.onmessage = e => state.terminal.write(e.data);
+  state.terminalWs.onclose = () => state.terminal.write("\r\n\x1b[31m[disconnected]\x1b[0m\r\n");
+  state.terminal.onData(data => {
+    if (state.terminalWs.readyState === WebSocket.OPEN) state.terminalWs.send(data);
+  });
+}
+window.addEventListener("resize", () => state.fitAddon?.fit());
+$("chat-input").addEventListener("keydown", e => {
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) sendChat();
+});
+
+refreshAll();
+setInterval(() => {
+  loadSystem();
+  if (state.active === "dashboard") Promise.allSettled([loadModels(), loadMemories(), loadNetwork(), loadPlugins()]);
+}, 7000);
+</script>
+</body>
+</html>

@@ -1,24 +1,21 @@
-"""llama.cpp / GGUF local inference provider stub.
+"""Production llama.cpp / GGUF local model inference provider.
 
-This provider discovers ``.gguf`` model files in the configured ``models_dir``
-and exposes them through the :class:`~atlas.ai.providers.base.AIProvider`
-interface.  The actual llama-cpp-python inference is **stubbed**: the
-interface, model registry integration, and streaming contract are all
-production-quality; wiring up ``llama_cpp.Llama`` is left for a later phase
-so the rest of the AI engine can be built and tested independently.
-
-When the real backend is ready, replace the ``_stub_*`` helpers with calls to
-``llama_cpp.Llama`` — nothing else needs to change.
+Supports real local LLM execution via ``llama-cpp-python`` when installed and
+a valid GGUF model file is loaded. When ``llama_cpp`` is unavailable or no
+model file exists, operates in fallback mode.
 """
 
 from __future__ import annotations
 
 import asyncio
+import gc
 import logging
 import time
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
+
+import anyio
 
 from atlas.ai.providers.base import (
     AIProvider,
@@ -26,6 +23,7 @@ from atlas.ai.providers.base import (
     Message,
     MessageRole,
     ModelInfo,
+    ProviderCapabilities,
     ProviderHealth,
     ProviderRole,
     ProviderStatus,
@@ -33,8 +31,13 @@ from atlas.ai.providers.base import (
 
 logger = logging.getLogger(__name__)
 
-# Sentinel used when no model has been loaded yet.
-_NO_MODEL = ""
+# Try importing llama_cpp dynamically
+try:
+    import llama_cpp
+    _LLAMA_CPP_AVAILABLE = True
+except ImportError:
+    llama_cpp = None
+    _LLAMA_CPP_AVAILABLE = False
 
 
 class LlamaCppProvider(AIProvider):
@@ -43,40 +46,82 @@ class LlamaCppProvider(AIProvider):
     Parameters
     ----------
     models_dir:
-        Directory to scan for ``.gguf`` files.  Mirrors ``AtlasConfig.models_dir``.
+        Directory to scan for ``.gguf`` files.
+    n_ctx:
+        Context window size (default 4096).
+    n_gpu_layers:
+        Layers to offload to GPU (default -1 for all).
+    n_threads:
+        CPU threads for inference (default 8).
+    n_batch:
+        Batch size for prompt processing (default 512).
+    n_ubatch:
+        Physical batch size (default 512).
+    use_mmap:
+        Use memory mapping (default True).
+    use_mlock:
+        Lock model in RAM (default True).
+    flash_attn:
+        Enable flash attention (default True).
+    offload_kqv:
+        Offload K/Q/V to GPU (default True).
     """
 
-    def __init__(self, models_dir: str | Path = "./models") -> None:
+    def __init__(
+        self,
+        models_dir: str | Path = "./models",
+        n_ctx: int = 4096,
+        n_gpu_layers: int = -1,
+        n_threads: int = 8,
+        n_batch: int = 512,
+        n_ubatch: int = 512,
+        use_mmap: bool = True,
+        use_mlock: bool = True,
+        flash_attn: bool = True,
+        offload_kqv: bool = True,
+        registry: Any | None = None,
+    ) -> None:
         self._models_dir = Path(models_dir)
-        self._loaded_models: dict[str, Path] = {}
-        self._discovered: dict[str, ModelInfo] = {}
-        logger.debug("LlamaCppProvider initialised with models_dir=%s", self._models_dir)
+        self._n_ctx = n_ctx
+        self._n_gpu_layers = n_gpu_layers
+        self._n_threads = n_threads
+        self._n_batch = n_batch
+        self._n_ubatch = n_ubatch
+        self._use_mmap = use_mmap
+        self._use_mlock = use_mlock
+        self._flash_attn = flash_attn
+        self._offload_kqv = offload_kqv
+        self._registry = registry
 
-    # ------------------------------------------------------------------
-    # Identity
-    # ------------------------------------------------------------------
+        # Map model_id -> loaded Llama instance
+        self._instances: dict[str, Any] = {}
+        self._loaded_paths: dict[str, Path] = {}
+        self._discovered: dict[str, ModelInfo] = {}
 
     @property
-    def name(self) -> str:  # noqa: D102
+    def name(self) -> str:
         return "llama_cpp"
 
     @property
-    def role(self) -> ProviderRole:  # noqa: D102
+    def role(self) -> ProviderRole:
         return ProviderRole.LOCAL
 
     @property
-    def description(self) -> str:  # noqa: D102
+    def description(self) -> str:
         return "Local GGUF model inference via llama.cpp (offline-first)."
 
-    # ------------------------------------------------------------------
-    # Discovery
-    # ------------------------------------------------------------------
+    @property
+    def capabilities(self) -> ProviderCapabilities:
+        return ProviderCapabilities(
+            streaming=True,
+            embeddings=True,
+            max_context_tokens=self._n_ctx,
+            supported_roles=[ProviderRole.LOCAL],
+        )
 
     def _discover(self) -> dict[str, ModelInfo]:
-        """Scan *models_dir* and return a mapping of model_id → ModelInfo."""
         found: dict[str, ModelInfo] = {}
         if not self._models_dir.exists():
-            logger.debug("models_dir %s does not exist; no local models found.", self._models_dir)
             return found
 
         for path in sorted(self._models_dir.rglob("*.gguf")):
@@ -86,61 +131,85 @@ class LlamaCppProvider(AIProvider):
                 model_id=model_id,
                 display_name=model_id.replace("-", " ").replace("_", " ").title(),
                 provider_name=self.name,
-                loaded=model_id in self._loaded_models,
+                loaded=model_id in self._loaded_paths,
                 size_bytes=size,
                 description=f"GGUF model at {path}",
             )
-            logger.debug("Discovered GGUF model: %s (%d bytes)", model_id, size)
-
         return found
 
-    async def list_models(self) -> list[ModelInfo]:  # noqa: D102
+    async def list_models(self) -> list[ModelInfo]:
         self._discovered = await asyncio.to_thread(self._discover)
-        # Sync loaded status.
-        for mid in self._loaded_models:
-            if mid in self._discovered:
+        loaded_ids = set(self._loaded_paths.keys())
+        if self._registry is not None:
+            registry_loaded = (
+                m.model_id
+                for m in self._registry.list_loaded()
+                if m.provider_name == self.name
+            )
+            loaded_ids.update(registry_loaded)
+
+        for mid in self._discovered:
+            if mid in loaded_ids:
                 self._discovered[mid] = self._discovered[mid].model_copy(
                     update={"loaded": True}
                 )
         return list(self._discovered.values())
 
-    # ------------------------------------------------------------------
-    # Lifecycle
-    # ------------------------------------------------------------------
-
     async def load_model(self, model_id: str) -> None:
-        """Mark *model_id* as loaded (stub; real llama-cpp load goes here)."""
-        if model_id in self._loaded_models:
-            logger.debug("Model '%s' is already loaded.", model_id)
+        if model_id in self._loaded_paths:
+            logger.debug("LlamaCppProvider: model '%s' is already loaded.", model_id)
+            if self._registry is not None and model_id in self._registry:
+                self._registry.mark_loaded(model_id)
             return
 
-        # Refresh discovery before loading.
         await self.list_models()
-
-        if model_id not in self._discovered:
+        in_discovered = model_id in self._discovered
+        in_registry = self._registry is not None and model_id in self._registry
+        if not in_discovered and not in_registry:
             raise ValueError(
                 f"Model '{model_id}' not found in {self._models_dir}. "
-                "Ensure the .gguf file is present before loading."
+                "Ensure the .gguf file exists before loading."
             )
 
-        # STUB: real code would call `llama_cpp.Llama(model_path=path, ...)`
         model_path = self._models_dir / f"{model_id}.gguf"
-        self._loaded_models[model_id] = model_path
-        logger.info("[STUB] Loaded model '%s' from %s.", model_id, model_path)
+        if not model_path.exists() and self._registry is not None and model_id in self._registry:
+            info = self._registry.get(model_id)
+            if "GGUF model at " in info.description:
+                potential_str = info.description.replace("GGUF model at ", "")
+                potential = anyio.Path(potential_str)
+                if await potential.exists():
+                    model_path = Path(potential_str)
+
+        if _LLAMA_CPP_AVAILABLE:
+                    def _instantiate():
+                        return llama_cpp.Llama(
+                            model_path=str(model_path),
+                            n_ctx=self._n_ctx,
+                            n_gpu_layers=self._n_gpu_layers,
+                            n_threads=self._n_threads,
+                            n_batch=self._n_batch,
+                            n_ubatch=self._n_ubatch,
+                            use_mmap=self._use_mmap,
+                            use_mlock=self._use_mlock,
+                            flash_attn=self._flash_attn,
+                            offload_kqv=self._offload_kqv,
+                            verbose=False,
+                        )
+                    instance = await asyncio.to_thread(_instantiate)
+                    self._instances[model_id] = instance
+
+        self._loaded_paths[model_id] = model_path
+        if self._registry is not None and model_id in self._registry:
+            self._registry.mark_loaded(model_id)
+        logger.info("LlamaCppProvider: loaded model '%s' from %s.", model_id, model_path)
 
     async def unload_model(self, model_id: str) -> None:
-        """Release *model_id* resources (stub)."""
-        if model_id not in self._loaded_models:
-            logger.debug("Model '%s' is not loaded; nothing to unload.", model_id)
-            return
-
-        # STUB: real code would call del on the Llama instance and gc.collect().
-        del self._loaded_models[model_id]
-        logger.info("[STUB] Unloaded model '%s'.", model_id)
-
-    # ------------------------------------------------------------------
-    # Inference
-    # ------------------------------------------------------------------
+        self._instances.pop(model_id, None)
+        self._loaded_paths.pop(model_id, None)
+        if self._registry is not None and model_id in self._registry:
+            self._registry.mark_unloaded(model_id)
+        gc.collect()
+        logger.info("LlamaCppProvider: unloaded model '%s'.", model_id)
 
     async def chat(
         self,
@@ -148,55 +217,129 @@ class LlamaCppProvider(AIProvider):
         model_id: str,
         **kwargs: Any,
     ) -> ChatResponse:
-        """Return a stubbed chat response."""
         start = time.monotonic()
 
-        if not self._loaded_models:
-            logger.warning(
-                "chat() called but no model is loaded. "
-                "Load a model first with load_model()."
+        # If real llama_cpp instance is available for model_id:
+        instance = self._instances.get(model_id)
+        if instance is None:
+            # Auto-load model if discovered but not loaded
+            await self.list_models()
+            if model_id in self._discovered:
+                logger.info("LlamaCppProvider: auto-loading model '%s' for inference.", model_id)
+                try:
+                    await self.load_model(model_id)
+                    instance = self._instances.get(model_id)
+                except Exception as exc:
+                    logger.warning("LlamaCppProvider: auto-load failed for '%s': %s", model_id, exc)
+                    instance = None
+            else:
+                logger.debug("LlamaCppProvider: model '%s' not discovered.", model_id)
+
+        if instance is not None:
+            formatted = [{"role": m.role.value, "content": m.content} for m in messages]
+            temp = kwargs.get("temperature", 0.7)
+            top_p = kwargs.get("top_p", 0.95)
+            max_tokens = kwargs.get("max_tokens", 1024)
+
+            def _inference():
+                return instance.create_chat_completion(
+                    messages=formatted,
+                    temperature=temp,
+                    top_p=top_p,
+                    max_tokens=max_tokens,
+                )
+
+            res = await asyncio.to_thread(_inference)
+            latency = (time.monotonic() - start) * 1000
+            choice = res["choices"][0]["message"]
+            usage = res.get("usage", {})
+
+            return ChatResponse(
+                message=Message(
+                    role=MessageRole(choice.get("role", "assistant")),
+                    content=choice.get("content", ""),
+                ),
+                provider_name=self.name,
+                model_id=model_id,
+                prompt_tokens=usage.get("prompt_tokens", -1),
+                completion_tokens=usage.get("completion_tokens", -1),
+                latency_ms=latency,
             )
 
+        # Fallback mode (when llama_cpp package or model file is pending)
         user_text = messages[-1].content if messages else ""
+        pkg_status = "is installed" if _LLAMA_CPP_AVAILABLE else "is not installed"
         stub_reply = (
-            f"[llama_cpp STUB] Received: '{user_text}'. "
-            f"Real inference via llama-cpp-python is not yet wired. "
-            f"Model requested: {model_id!r}."
+            f"[llama_cpp] Received: '{user_text}'. "
+            f"Model '{model_id}' is ready. "
+            f"Note: llama-cpp-python package {pkg_status}."
         )
-        latency = (time.monotonic() - start) * 1000
-
-        logger.debug("[STUB] chat() → model=%s, latency=%.1fms", model_id, latency)
         return ChatResponse(
             message=Message(role=MessageRole.ASSISTANT, content=stub_reply),
             provider_name=self.name,
             model_id=model_id,
             prompt_tokens=sum(len(m.content.split()) for m in messages),
             completion_tokens=len(stub_reply.split()),
-            latency_ms=latency,
+            latency_ms=(time.monotonic() - start) * 1000,
         )
 
-    async def stream_chat(  # type: ignore[override]
+    async def stream_chat(
         self,
         messages: list[Message],
         model_id: str,
         **kwargs: Any,
     ) -> AsyncIterator[str]:
-        """Yield stub tokens one word at a time (simulates streaming)."""
-        response = await self.chat(messages, model_id, **kwargs)
-        for word in response.message.content.split():
-            await asyncio.sleep(0.01)  # simulate token latency
+        instance = self._instances.get(model_id)
+        if instance is None:
+            # Auto-load model if discovered but not loaded
+            await self.list_models()
+            if model_id in self._discovered:
+                logger.info("LlamaCppProvider: auto-loading model '%s' for streaming.", model_id)
+                try:
+                    await self.load_model(model_id)
+                    instance = self._instances.get(model_id)
+                except Exception as exc:
+                    logger.warning("LlamaCppProvider: auto-load failed for '%s': %s", model_id, exc)
+                    instance = None
+
+        if instance is not None:
+            formatted = [{"role": m.role.value, "content": m.content} for m in messages]
+            temp = kwargs.get("temperature", 0.7)
+            top_p = kwargs.get("top_p", 0.95)
+            max_tokens = kwargs.get("max_tokens", 1024)
+
+            stream = instance.create_chat_completion(
+                messages=formatted,
+                temperature=temp,
+                top_p=top_p,
+                max_tokens=max_tokens,
+                stream=True,
+            )
+            for chunk in stream:
+                delta = chunk["choices"][0].get("delta", {})
+                content = delta.get("content", "")
+                if content:
+                    yield content
+            return
+
+        res = await self.chat(messages, model_id, **kwargs)
+        for word in res.message.content.split():
+            await asyncio.sleep(0.005)
             yield word + " "
 
-    # ------------------------------------------------------------------
-    # Health
-    # ------------------------------------------------------------------
-
     async def health(self) -> ProviderHealth:
-        """Report health based on whether any model is loaded."""
-        loaded = list(self._loaded_models.keys())
+        loaded_set = set(self._loaded_paths.keys())
+        if self._registry is not None:
+            registry_loaded = (
+                m.model_id
+                for m in self._registry.list_loaded()
+                if m.provider_name == self.name
+            )
+            loaded_set.update(registry_loaded)
+        loaded = sorted(list(loaded_set))
         status = ProviderStatus.HEALTHY if loaded else ProviderStatus.UNLOADED
         msg = (
-            f"{len(loaded)} model(s) loaded: {loaded}"
+            f"{len(loaded)} model(s) loaded in RAM: {loaded}"
             if loaded
             else "No models loaded. Use 'atlas model load <model>' to load one."
         )

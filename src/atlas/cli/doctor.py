@@ -1,20 +1,21 @@
 """Diagnostic checks for Atlas OS."""
 
+import os
 import platform
 import sys
 
 import click
+from rich.box import SIMPLE
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.box import SIMPLE
 
 console = Console()
 
 
 @click.command()
 @click.pass_context
-def doctor(ctx):
+def doctor(ctx: click.Context) -> None:
     """Run comprehensive system diagnostics."""
     container = ctx.obj["container"]
     results = []
@@ -53,7 +54,6 @@ def doctor(ctx):
         results.append(("Configuration", "Not loaded", "-"))
 
     # Check model directory
-    import os
 
     try:
         config = container.resolve("config")

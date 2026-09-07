@@ -1,0 +1,39 @@
+# Development Dockerfile with all optional dependencies
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install build and runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libssl-dev \
+    libffi-dev \
+    libsndfile1 \
+    libportaudio2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd -m -u 1000 atlas
+
+# Copy project files
+COPY pyproject.toml README.md ./
+COPY src ./src
+
+# Install with all optional dependencies for development
+RUN pip install -e ".[dev,voice,mqtt,api]" 2>&1 | grep -v "already satisfied" || true
+
+# Create data and models directories
+RUN mkdir -p /app/data /app/models /app/logs && \
+    chown -R atlas:atlas /app/data /app/models /app/logs
+
+# Copy config
+COPY --chown=atlas:atlas configs /app/configs
+
+# Switch to non-root user
+USER atlas
+
+# Expose API port
+EXPOSE 8000
+
+# Development command with hot-reload
+CMD ["uvicorn", "atlas.api.server:main", "--host", "0.0.0.0", "--port", "8000", "--reload"]

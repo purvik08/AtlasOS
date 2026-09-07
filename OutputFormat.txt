@@ -1,0 +1,25 @@
+For every task:
+
+1. Explain the design.
+
+2. Explain which files will change.
+
+3. Explain why.
+
+4. Implement the feature.
+
+5. Update tests.
+
+6. Verify functionality.
+
+7. Ensure backward compatibility.
+
+8. Provide commands to test.
+
+9. Wait for confirmation before continuing.
+
+Never modify unrelated files.
+
+Never introduce breaking changes.
+
+Treat Atlas OS as production software from the first commit.

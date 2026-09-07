@@ -1,0 +1,40 @@
+services:
+  atlas-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: atlas-os-api-dev
+    ports:
+      - "8000:8000"
+    environment:
+      ATLAS_LOG_LEVEL: ${ATLAS_LOG_LEVEL:-DEBUG}
+      ATLAS_ENVIRONMENT: ${ATLAS_ENVIRONMENT:-development}
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      # Mount source code for live development
+      - ./src:/app/src
+      - ./configs:/app/configs
+      - atlas-data:/app/data
+      - atlas-models:/app/models
+      - atlas-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://127.0.0.1:8000/', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - atlas-network
+    restart: unless-stopped
+
+volumes:
+  atlas-data:
+    driver: local
+  atlas-models:
+    driver: local
+  atlas-logs:
+    driver: local
+
+networks:
+  atlas-network:
+    driver: bridge

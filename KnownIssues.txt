@@ -1,0 +1,95 @@
+Critical Issues
+
+1. api/auth.py – require_auth() function never returns APIKey on success
+Lines 127–148
+
+async def require_auth(
+    request: Request,
+    authorization: str | None = Header(None),
+) -> APIKey | None:
+    # ... validation logic ...
+    raise HTTPException(status_code=401, detail="Invalid or expired API key")
+
+
+Problem: The function validates the API key at line 137 (api_key = auth_mgr.validate_api_key(token)), but then immediately raises an exception instead of returning it. The return statement is missing.
+
+
+2. api/server.py – Incorrect uvicorn.run() signature
+Lines 15–21
+
+uvicorn.run(
+    factory,
+    host="127.0.0.1",
+    port=8000,
+    factory=True,  # ← WRONG: factory is positional, not a kwarg
+    loop="asyncio",
+)
+
+Problem: You're passing factory as both a positional argument (line 15) and as a keyword argument factory=True (line 18). The correct uvicorn signature is uvicorn.run(app, ...) where if you need a factory, you pass a callable string or object, not a boolean flag.
+
+
+3. api/auth.py – set_auth_manager() is a no-op
+Line 150
+
+def set_auth_manager(auth_manager: AuthManager) -> None:
+    """Set the global auth manager for the require_auth dependency."""
+    pass  # ← Does nothing
+
+
+Problem: This function accepts an AuthManager but does nothing with it. The global _auth_manager is never assigned.
+
+
+4. api/__init__.py – Missing import for create_api_app
+Line 31
+
+def create_api_app(app) -> "FastAPI":
+    # ... lots of code, no import of AtlasApplication ...
+
+Problem: At line 33, you use from fastapi import FastAPI, Request and other imports, but then at line 51 you reference AtlasApplication without importing it (used in type hints and runtime). This will fail at runtime if the function is called.
+
+
+5. auth/middleware.py – Unused import and incomplete error handling
+Lines 30–32
+
+def get_current_user(request: Request) -> User:
+    """..."""
+    authorization: str | None = request.headers.get("Authorization")
+
+
+Problem: No error handling if the Authorization header is malformed beyond a simple prefix check. Also, the logic assumes Bearer tokens are always 7 characters, which is correct, but should validate this.
+
+
+6. auth/manager.py – JWT token revocation is ephemeral
+Lines 159–161
+
+_revoked_jtis: set[str] = set()
+
+Problem: Revoked JTIs are stored in a set that's cleared on server restart. This is documented as a limitation, but tokens revoked before restart can still be used after restart.
+
+
+7. api/__init__.py – Missing error handling in root() and web_ui() routes
+Lines 83–95
+
+@fastapi_app.get("/", response_class=HTMLResponse)
+async def root(request: Request):
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept:
+        html_file = Path(__file__).parent / "web" / "index.html"
+        if html_file.exists():
+            return HTMLResponse(html_file.read_text(encoding="utf-8"))
+    # ← Falls through without explicit return for non-HTML requests
+
+
+Problem: The function doesn't return anything if accept doesn't contain "text/html". This will return None and cause a 500 error.
+
+8. cli/main.py – AtlasApplication instantiated on every CLI command
+Lines 55–66
+
+@click.group()
+@click.pass_context
+def cli(ctx):
+    config = load_config(config_path)
+    app = AtlasApplication(config)
+    # ...
+
+Problem: Every CLI subcommand triggers full initialization of AtlasApplication, including starting services. For lightweight commands like atlas --version, this is wasteful and may fail if dependencies are missing.

@@ -1,0 +1,86 @@
+# Dependencies
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Temporary files
+.tmp/
+*.tmp
+*.bak
+.claude/
+
+# Environment files
+.env
+.env.local
+
+# Large model files (use mount volumes instead)
+*.gguf
+models/*.gguf
+
+# Logs
+logs/
+*.log
+
+# OS-specific
+Thumbs.db
+.DS_Store
+
+# Project-specific
+session-*.md
+cmd_output.txt
+help*.txt
+test_*.txt
+output.txt
+ruff-*.txt
+mypy*.txt
+stderr.txt
+stdout.txt
+
+# Don't copy source or tests into image
+.git/
+.gitignore
+tests/
+docs/
+scripts/
+systemd/

@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from typing import Any
 
 import click
 from rich import box
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
+from rich.table import Table
 
 from atlas.ai.manager import AIManager
 from atlas.ai.model import ModelNotFoundError
@@ -22,18 +23,26 @@ console = Console()
 
 
 def _get_manager(ctx: click.Context) -> AIManager:
-    """Retrieve (or lazy-create) the AIManager from the CLI context."""
+    """Resolve AIManager and ensure it is started.
+
+    Every `atlas` invocation is a new process, so the manager is always
+    unstarted.  start() scans models_dir and registers providers — without
+    it, ModelRegistry is empty and no inference works.
+    """
     manager: AIManager | None = ctx.obj.get("ai_manager")
     if manager is None:
         app = ctx.obj["app"]
-        manager = AIManager(app.config)
-        asyncio.run(manager.start())
+        try:
+            manager = app.container.resolve("ai_manager")
+        except Exception:
+            manager = AIManager(app.config)
+        asyncio.run(manager.start())  # always required — populates ModelRegistry
         ctx.obj["ai_manager"] = manager
     return manager
 
 
 @click.group(name="models")
-def models_group():
+def models_group() -> None:
     """Manage AI models."""
     pass
 
@@ -41,11 +50,18 @@ def models_group():
 @models_group.command(name="list")
 @click.option("--loaded-only", is_flag=True, help="Show only loaded models.")
 @click.pass_context
-def model_list(ctx, loaded_only):
+def model_list(ctx: click.Context, loaded_only: bool) -> None:
     """List all discovered models and their status."""
     manager = _get_manager(ctx)
     all_models = manager.list_models()
-    models = [m for m in all_models if m.loaded] if loaded_only else all_models
+    if loaded_only:
+        models = [
+            m
+            for m in all_models
+            if m.provider_name == "llama_cpp" and m.loaded
+        ]
+    else:
+        models = all_models
 
     if not models:
         if loaded_only:
@@ -75,7 +91,18 @@ def model_list(ctx, loaded_only):
             if m.size_bytes > 0
             else "unknown"
         )
-        status = "[green]loaded[/]" if m.loaded else "[dim]unloaded[/]"
+        if m.provider_name == "llama_cpp":
+            status = "[green]loaded[/]" if m.loaded else "[dim]unloaded[/]"
+        else:
+            try:
+                p = manager.router.get(m.provider_name)
+                ph = asyncio.run(p.health())
+                from atlas.ai.providers.base import ProviderStatus
+                is_healthy = ph.status == ProviderStatus.HEALTHY
+                status = "[green]available[/]" if is_healthy else "[yellow]unauthenticated[/]"
+            except Exception:
+                status = "[yellow]unauthenticated[/]"
+
         table.add_row(m.model_id, m.display_name, m.provider_name, status, size_str)
 
     console.print(table)
@@ -85,7 +112,7 @@ def model_list(ctx, loaded_only):
 @click.argument("model_id")
 @click.option("--provider", "-p", default=None, help="Provider to use (optional).")
 @click.pass_context
-def model_load(ctx, model_id, provider):
+def model_load(ctx: click.Context, model_id: str, provider: str | None) -> None:
     """Load a model into memory."""
     manager = _get_manager(ctx)
     console.print(f"[cyan]Loading model:[/] {model_id} …")
@@ -104,7 +131,7 @@ def model_load(ctx, model_id, provider):
 @click.argument("model_id")
 @click.option("--provider", "-p", default=None, help="Provider to use (optional).")
 @click.pass_context
-def model_unload(ctx, model_id, provider):
+def model_unload(ctx: click.Context, model_id: str, provider: str | None) -> None:
     """Unload a model from memory."""
     manager = _get_manager(ctx)
     console.print(f"[cyan]Unloading model:[/] {model_id} …")
@@ -122,7 +149,7 @@ def model_unload(ctx, model_id, provider):
 @models_group.command(name="info")
 @click.argument("model_id")
 @click.pass_context
-def model_info(ctx, model_id):
+def model_info(ctx: click.Context, model_id: str) -> None:
     """Show detailed information about a specific model."""
     manager = _get_manager(ctx)
     try:
@@ -139,11 +166,23 @@ def model_info(ctx, model_id):
         else "unknown"
     )
 
+    if info.provider_name == "llama_cpp":
+        status_str = "[green]loaded[/]" if info.loaded else "[dim]unloaded[/]"
+    else:
+        try:
+            p = manager.router.get(info.provider_name)
+            ph = asyncio.run(p.health())
+            from atlas.ai.providers.base import ProviderStatus
+            is_healthy = ph.status == ProviderStatus.HEALTHY
+            status_str = "[green]available[/]" if is_healthy else "[yellow]unauthenticated[/]"
+        except Exception:
+            status_str = "[yellow]unauthenticated[/]"
+
     content = (
         f"[bold]Model ID:[/]      {info.model_id}\n"
         f"[bold]Display Name:[/] {info.display_name}\n"
         f"[bold]Provider:[/]     {info.provider_name}\n"
-        f"[bold]Status:[/]       {'[green]loaded[/]' if info.loaded else '[dim]unloaded[/]'}\n"
+        f"[bold]Status:[/]       {status_str}\n"
         f"[bold]Size:[/]         {size_str}\n"
         f"[bold]Description:[/]  {info.description or 'n/a'}\n"
     )
@@ -171,7 +210,15 @@ def model_info(ctx, model_id):
 @click.option("--token", default=None, help="Hugging Face token for gated models.")
 @click.option("--overwrite", is_flag=True, help="Re-download even if file exists.")
 @click.pass_context
-def model_download(ctx, model_id, url, repo, filename, token, overwrite):
+def model_download(
+    ctx: click.Context,
+    model_id: str,
+    url: str | None,
+    repo: str | None,
+    filename: str | None,
+    token: str | None,
+    overwrite: bool,
+) -> None:
     """Download a model from Hugging Face or a direct URL.
 
     Examples::
@@ -195,14 +242,16 @@ def model_download(ctx, model_id, url, repo, filename, token, overwrite):
 
     console.print(f"[cyan]Downloading model:[/] {model_id} …")
 
-    async def _run():
+    async def _run() -> Any:
         if repo:
+            assert filename is not None  # Validated above
             return await manager.downloader.download_from_huggingface(
                 repo_id=repo,
                 filename=filename,
                 token=token,
                 overwrite=overwrite,
             )
+        assert url is not None  # Validated above
         return await manager.download_model(
             model_id=model_id,
             source_url=url,
@@ -229,7 +278,7 @@ def model_download(ctx, model_id, url, repo, filename, token, overwrite):
 @click.argument("model_id")
 @click.confirmation_option(prompt="Are you sure you want to remove this model?")
 @click.pass_context
-def model_remove(ctx, model_id):
+def model_remove(ctx: click.Context, model_id: str) -> None:
     """Remove a model from the registry (does not delete the file)."""
     manager = _get_manager(ctx)
     try:

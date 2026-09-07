@@ -1,0 +1,101 @@
+Language
+
+Python 3.14+
+
+Architecture
+
+Clean Architecture
+
+SOLID
+
+Dependency Injection
+
+Repository Pattern
+
+Service Layer
+
+Provider Pattern
+
+Plugin Pattern
+
+Style
+
+PEP8
+
+Black
+
+Ruff
+
+Strict Type Hints
+
+Async First
+
+Libraries
+
+FastAPI
+
+Pydantic v2
+
+PySide6
+
+Click
+
+Rich
+
+httpx
+
+SQLAlchemy
+
+SQLite
+
+llama.cpp
+
+Whisper.cpp
+
+Piper
+
+PyTest
+
+Logging
+
+Structured Logging
+
+JSON support
+
+Health Monitoring
+
+Tests
+
+Every module must include
+
+Unit Tests
+
+Integration Tests
+
+Regression Tests
+
+Code Coverage >90%
+
+Performance
+
+Low RAM
+
+Low CPU
+
+Raspberry Pi optimized
+
+No unnecessary allocations
+
+No duplicated computation
+
+Documentation
+
+Docstrings
+
+Type hints
+
+Architecture diagrams
+
+README updates
+
+Every feature must include verification commands.

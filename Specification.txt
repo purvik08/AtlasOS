@@ -1,0 +1,251 @@
+Build Atlas OS completely from scratch.
+
+Project Modules
+
+Phase 1
+✓ Runtime Core
+
+• Application
+• Lifecycle Manager
+• State Machine
+• Dependency Injection
+• Service Registry
+• Background Tasks
+• Health Monitoring
+• Heartbeat
+• Signal Handling
+
+Phase 2
+
+Professional CLI
+
+• Runtime commands
+• Config commands
+• Model commands
+• Provider commands
+• Session commands
+• Network commands
+• Voice commands
+• Plugin commands
+• Logs
+• Doctor
+• Shell
+
+Phase 3
+
+Kiosk UI
+
+PySide6 + QML
+
+Home
+Chat
+Models
+Network
+Voice
+Memory
+System
+
+Responsive
+Animated
+Production ready
+
+Phase 4
+
+AI Framework
+
+Provider Manager
+
+Providers
+
+llama.cpp
+Gemini
+DeepSeek
+Qwen
+Kimi
+OpenAI Compatible
+
+Model Registry
+
+Model Downloader
+
+Model Loader
+
+Resource Manager
+
+Inference Manager
+
+Streaming
+
+Sessions
+
+Conversation history
+
+Provider Health
+
+Authentication
+
+Model metadata
+
+Context management
+
+Phase 5
+
+REST API
+
+FastAPI
+
+REST
+
+WebSocket
+
+Streaming
+
+Authentication
+
+SDK
+
+OpenAI compatibility
+
+Phase 6
+
+Real AI Integration
+
+llama.cpp
+
+GGUF download
+
+HuggingFace support
+
+Automatic registry
+
+Model persistence
+
+Streaming
+
+Chat
+
+Embeddings
+
+Tool Calling
+
+Context Window
+
+Prompt Templates
+
+Memory
+
+Cloud Providers
+
+Real API calls
+
+Real inference
+
+No dummy data
+
+Phase 7
+
+Memory System
+
+SQLite
+
+Embeddings
+
+Semantic Search
+
+Conversation Memory
+
+Knowledge Base
+
+Long Term Memory
+
+Short Term Memory
+
+Retrieval
+
+Ranking
+
+Phase 8
+
+Voice
+
+Wake Word
+
+Whisper.cpp
+
+Piper
+
+Streaming STT
+
+Streaming TTS
+
+Voice Activity Detection
+
+Phase 9
+
+Networking
+
+WiFi
+
+Access Point
+
+Mesh Discovery
+
+mDNS
+
+Remote Client
+
+Synchronization
+
+LAN
+
+Phase 10
+
+Plugin Framework
+
+Plugin SDK
+
+Sandbox
+
+Manifest
+
+Dependency Resolver
+
+Auto Discovery
+
+Marketplace Ready
+
+Phase 11
+
+Deployment
+
+Docker
+
+systemd
+
+Raspberry Pi
+
+Cross Platform
+
+Automatic Updates
+
+Packaging
+
+Monitoring
+
+Phase 12
+
+Production
+
+Performance Optimization
+
+Memory Optimization
+
+Stress Testing
+
+Security
+
+Documentation
+
+CI/CD
+
+Benchmarking

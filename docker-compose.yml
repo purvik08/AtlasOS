@@ -1,0 +1,64 @@
+services:
+  # Production API server - minimal footprint
+  # For development with hot-reload and all optional dependencies, use:
+  #   docker compose -f docker-compose.dev.yml up
+  atlas-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: atlas-os-api
+    ports:
+      - "8000:8000"
+    environment:
+      ATLAS_LOG_LEVEL: ${ATLAS_LOG_LEVEL:-INFO}
+      ATLAS_ENVIRONMENT: ${ATLAS_ENVIRONMENT:-development}
+      ATLAS_APP_NAME: ${ATLAS_APP_NAME:-Atlas OS}
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      # Persist configuration
+      - ./configs:/app/configs
+      # Persist data (users, API keys, memories, etc.)
+      - atlas-data:/app/data
+      # Persist model cache
+      - atlas-models:/app/models
+      # Persist logs
+      - atlas-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://127.0.0.1:8000/v1/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - atlas-network
+    restart: unless-stopped
+
+  # Optional: Redis for future session/cache management
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: atlas-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - atlas-redis:/data
+  #   networks:
+  #     - atlas-network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+
+volumes:
+  atlas-data:
+    driver: local
+  atlas-models:
+    driver: local
+  atlas-logs:
+    driver: local
+  # atlas-redis:
+  #   driver: local
+
+networks:
+  atlas-network:
+    driver: bridge

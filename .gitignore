@@ -26,3 +26,4 @@ plugins/*
 
 .DS_Store
 models/qwen3-0.6b-q4_k_m.gguf
+models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf

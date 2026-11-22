@@ -36,7 +36,8 @@ class AIConfig(BaseModel):
         gt=0,
         description="Maximum number of messages retained per conversation session.",
     )
-    # Cloud provider API keys.
+    # Cloud provider API keys.  Left empty by default so the stubs remain
+    # functional without any credentials configured.
     gemini_api_key: str = Field(
         default="", description="Google Gemini API key (ATLAS_AI__GEMINI_API_KEY)."
     )
@@ -48,42 +49,6 @@ class AIConfig(BaseModel):
     )
     qwen_api_key: str = Field(
         default="", description="Alibaba Qwen API key (ATLAS_AI__QWEN_API_KEY)."
-    )
-
-    # Local inference parameters (llama.cpp)
-    n_ctx: int = Field(default=4096, description="Context window size for local models.")
-    n_gpu_layers: int = Field(default=0, description="Number of layers to offload to GPU.")
-    n_threads: int = Field(default=4, description="Number of CPU threads for inference.")
-
-    # Generation defaults
-    temperature: float = Field(
-        default=0.7, ge=0.0, le=2.0, description="Default sampling temperature."
-    )
-    top_p: float = Field(
-        default=0.95, ge=0.0, le=1.0, description="Default top_p nucleus sampling."
-    )
-    max_tokens: int = Field(
-        default=1024, gt=0, description="Default maximum tokens to generate."
-    )
-
-    # Engine, Network & Caching
-    timeout_seconds: float = Field(
-        default=60.0, gt=0.0, description="HTTP timeout for cloud calls."
-    )
-    max_retries: int = Field(
-        default=3, ge=0, description="Max retries for transient cloud errors."
-    )
-    cache_enabled: bool = Field(
-        default=True, description="Enable response caching."
-    )
-    cache_ttl_seconds: int = Field(
-        default=3600, gt=0, description="Cache Time-To-Live in seconds."
-    )
-    max_ram_percent: float = Field(
-        default=90.0,
-        gt=0.0,
-        le=100.0,
-        description="Max RAM threshold before refusing model load.",
     )
 
 

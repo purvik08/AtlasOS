@@ -12,7 +12,7 @@ async def test_heartbeat_emits_ticks():
 
     await service.start()
     try:
-        await asyncio.sleep(0.35)
+        await asyncio.sleep(0.24)
     finally:
         await service.stop()
 

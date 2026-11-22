@@ -17,9 +17,8 @@ from __future__ import annotations
 
 import logging
 import uuid
-from collections.abc import Iterator
-from datetime import UTC, datetime
-from typing import Any
+from datetime import datetime, timezone
+from typing import Iterator
 
 from atlas.ai.history import ConversationHistory
 from atlas.ai.providers.base import Message, MessageRole
@@ -52,18 +51,17 @@ class ChatSession:
         model_id: str,
         max_history_messages: int = 50,
         system_prompt: str = "",
-        metadata: dict[str, Any] | None = None,
+        metadata: dict | None = None,
     ) -> None:
         self.session_id: str = str(uuid.uuid4())
         self.provider_name: str = provider_name
         self.model_id: str = model_id
-        self.system_prompt: str = system_prompt
-        self.created_at: datetime = datetime.now(UTC)
+        self.created_at: datetime = datetime.now(timezone.utc)
         self.history: ConversationHistory = ConversationHistory(
             max_messages=max_history_messages,
             session_id=self.session_id,
         )
-        self.metadata: dict[str, Any] = metadata or {}
+        self.metadata: dict = metadata or {}
 
         if system_prompt:
             self.history.set_system_prompt(system_prompt)
@@ -125,7 +123,7 @@ class SessionManager:
         provider_name: str,
         model_id: str,
         system_prompt: str = "",
-        metadata: dict[str, Any] | None = None,
+        metadata: dict | None = None,
     ) -> ChatSession:
         """Create and register a new :class:`ChatSession`.
 

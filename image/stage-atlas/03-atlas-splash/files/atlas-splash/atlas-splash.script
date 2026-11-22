@@ -1,0 +1,87 @@
+# ============================================================
+# Atlas OS Plymouth Boot Splash Theme
+# Dark background, cyan title, animated dot progress indicator
+# ============================================================
+
+# --- Background ---
+Window.SetBackgroundTopColor(0.039, 0.055, 0.078);       # #0a0e14
+Window.SetBackgroundBottomColor(0.024, 0.031, 0.043);    # #060810
+
+# --- Title: "ATLAS OS" ---
+title_image = Image.Text("ATLAS OS", 0.0, 0.839, 0.871, 1.0);
+local.title_sprite = Sprite();
+title_sprite.SetImage(title_image);
+title_sprite.SetX(Window.GetWidth()  / 2 - title_image.GetWidth()  / 2);
+title_sprite.SetY(Window.GetHeight() / 2 - title_image.GetHeight() / 2 - 50);
+title_sprite.SetZ(1);
+
+# --- Subtitle ---
+sub_image = Image.Text("Offline AI Edge OS", 0.439, 0.502, 0.549, 1.0);
+local.sub_sprite = Sprite();
+sub_sprite.SetImage(sub_image);
+sub_sprite.SetX(Window.GetWidth()  / 2 - sub_image.GetWidth()  / 2);
+sub_sprite.SetY(Window.GetHeight() / 2 - sub_image.GetHeight() / 2 + 10);
+sub_sprite.SetZ(1);
+
+# --- Animated dot progress bar (3 dots cycling) ---
+local.dot_count = 5;
+local.dot_spacing = 18;
+local.dot_size = 8;
+local.dots = [];
+local.dot_sprites = [];
+
+local.dot_x_start = Window.GetWidth()  / 2 - (dot_count * dot_spacing) / 2;
+local.dot_y       = Window.GetHeight() / 2 + 60;
+
+for (i = 0; i < dot_count; i++) {
+    dot_image = Image(dot_size, dot_size);
+    dot_image.Scale(dot_size, dot_size);
+    local.dots[i] = dot_image;
+
+    local.sp = Sprite();
+    sp.SetImage(dot_image);
+    sp.SetX(dot_x_start + i * dot_spacing);
+    sp.SetY(dot_y);
+    sp.SetZ(1);
+    local.dot_sprites[i] = sp;
+}
+
+local.frame = 0;
+local.active_dot = 0;
+
+fun refresh_callback() {
+    frame++;
+    if (frame % 10 == 0) {
+        active_dot = (active_dot + 1) % dot_count;
+    }
+
+    for (i = 0; i < dot_count; i++) {
+        sp = local.dot_sprites[i];
+        if (i == active_dot) {
+            sp.SetOpacity(1.0);
+        } else {
+            # Adjacent dots are dimmer for a trailing effect
+            dist = Math.Abs(i - active_dot);
+            if (dist > dot_count / 2) {
+                dist = dot_count - dist;
+            }
+            opacity = 1.0 - (dist * 0.25);
+            if (opacity < 0.1) { opacity = 0.1; }
+            sp.SetOpacity(opacity);
+        }
+    }
+}
+
+Plymouth.SetRefreshFunction(refresh_callback);
+
+# --- Boot message callback ---
+fun message_callback(text) {
+    msg_image = Image.Text(text, 0.302, 0.337, 0.376, 1.0);
+    local.msg_sprite = Sprite();
+    msg_sprite.SetImage(msg_image);
+    msg_sprite.SetX(Window.GetWidth()  / 2 - msg_image.GetWidth()  / 2);
+    msg_sprite.SetY(Window.GetHeight() / 2 + 100);
+    msg_sprite.SetZ(1);
+}
+
+Plymouth.SetMessageFunction(message_callback);

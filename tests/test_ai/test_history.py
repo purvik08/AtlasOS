@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from atlas.ai.history import ConversationHistory
 from atlas.ai.providers.base import Message, MessageRole
 
@@ -125,7 +127,7 @@ def test_truncate_to_fit_returns_all_if_within_budget():
 def test_truncate_to_fit_keeps_system_always():
     h = ConversationHistory()
     h.set_system_prompt("You are Atlas.")
-    for _i in range(20):
+    for i in range(20):
         h.append(_user("word " * 100))  # large messages to blow budget
     result = h.truncate_to_fit(max_tokens=10)
     assert result[0].role is MessageRole.SYSTEM

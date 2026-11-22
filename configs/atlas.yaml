@@ -34,29 +34,6 @@ ai:
   # Maximum number of messages retained per conversation session.
   max_history_messages: 50
 
-  # Local inference parameters (llama.cpp)
-  n_ctx: 4096
-  n_gpu_layers: -1  # -1 = offload all layers to GPU (if available), 0 = CPU only
-  n_threads: 8  # Use more threads for better performance
-  n_batch: 512  # Batch size for prompt processing
-  n_ubatch: 512  # Physical batch size
-  use_mmap: true  # Memory-map model file
-  use_mlock: true  # Lock model in RAM
-  flash_attn: true  # Enable flash attention
-  offload_kqv: true  # Offload K/Q/V to GPU
-
-  # Generation defaults
-  temperature: 0.7
-  top_p: 0.95
-  max_tokens: 1024
-
-  # Engine, Network & Caching
-  timeout_seconds: 120.0
-  max_retries: 3
-  cache_enabled: true
-  cache_ttl_seconds: 3600
-  max_ram_percent: 90.0
-
   # Cloud provider API keys.
   # Leave empty to keep providers in stub/mock mode.
   # Override via environment variables:

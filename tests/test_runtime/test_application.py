@@ -107,12 +107,7 @@ async def test_health_monitor_and_heartbeat_are_active_while_running():
         import asyncio
 
         await asyncio.sleep(0.15)
-        # AIManager is now auto-registered; cloud providers without API keys
-        # report UNHEALTHY → overall status may be HEALTHY or DEGRADED.
-        assert app.health_monitor.latest_report.status in (
-            HealthStatus.HEALTHY,
-            HealthStatus.DEGRADED,
-        )
+        assert app.health_monitor.latest_report.status is HealthStatus.HEALTHY
         assert app.heartbeat.last_beat is not None
 
     assert app.heartbeat.last_beat is None or True  # heartbeat stopped; no crash on read

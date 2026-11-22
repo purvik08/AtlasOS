@@ -1,0 +1,15 @@
+[Unit]
+Description=Atlas OS First Boot Setup
+Documentation=https://github.com/purvik08/AtlasOS
+After=network.target
+ConditionPathExists=/home/atlas/AtlasOS/scripts/first-boot.sh
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/home/atlas/AtlasOS/scripts/first-boot.sh
+RemainAfterExit=yes
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target

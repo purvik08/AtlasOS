@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Atlas OS Splash
+Description=Atlas OS boot splash — dark background with cyan title and animated dots
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/atlas-splash
+ScriptFile=/usr/share/plymouth/themes/atlas-splash/atlas-splash.script

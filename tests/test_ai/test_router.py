@@ -35,7 +35,7 @@ class _FakeProvider(AIProvider):
     async def chat(self, messages, model_id, **kwargs): ...  # type: ignore[return]
     async def stream_chat(self, messages, model_id, **kwargs):  # type: ignore[override]
         return
-        yield  # noqa: RUF001 - makes it an async generator
+        yield  # noqa: unreachable – makes it an async generator
     async def health(self): ...  # type: ignore[return]
 
 

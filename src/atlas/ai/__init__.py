@@ -30,7 +30,7 @@ Typical usage::
 from atlas.ai.downloader import DownloadResult, ModelDownloader
 from atlas.ai.history import ConversationHistory
 from atlas.ai.manager import AIManager, AIManagerError, SessionNotFoundError
-from atlas.ai.model import ModelNotFoundError, ModelRegistry
+from atlas.ai.model import ModelRegistry, ModelNotFoundError
 from atlas.ai.providers import (
     AIProvider,
     ChatResponse,

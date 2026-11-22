@@ -1,43 +1,73 @@
-Read and fully understand the following project documents before writing any code:
+Continue developing Atlas OS from the current project state. First read "Atlas OS Project Handoff.docx" and understand the existing architecture before making any changes.
 
-1. Project Description.txt
-2. Project Instructions.txt
-3. Specifications.txt
-4. Parameters.txt
-5. Output Format.txt
+Current status:
+- Runtime Core: Complete
+- Config & Logging: Complete
+- CLI: Complete
+- Project uses src layout.
+- Python 3.14
+- FastAPI
+- Pydantic
+- Runtime tests passing.
+- Preserve existing architecture, coding style and project structure.
 
-These files are the single source of truth for this project.
+Objective:
+Complete Phase 5 (AI Engine) only. Do NOT implement later phases yet.
 
-Your responsibilities:
+Implement:
 
-- Read every document completely.
-- Use them as permanent instructions throughout this session.
-- Follow them exactly unless I explicitly override something.
-- Do not ignore or simplify any requirement.
-- Preserve the specified architecture, coding standards, design principles, and development workflow.
-- Build AtlasOS strictly according to these documents.
-- Treat this as a production-grade software project, not a prototype.
+src/atlas/ai/
+│
+├── __init__.py
+├── manager.py
+├── router.py
+├── session.py
+├── history.py
+├── downloader.py
+├── model.py
+└── providers/
+    ├── __init__.py
+    ├── base.py
+    ├── llama_cpp.py
+    ├── gemini.py
+    ├── deepseek.py
+    ├── kimi.py
+    └── qwen.py
 
-Development Rules:
+Requirements:
+- Create an abstract AIProvider interface.
+- Every provider must implement:
+  - chat()
+  - stream_chat()
+  - list_models()
+  - load_model()
+  - unload_model()
+  - health()
+- Manager discovers and registers providers automatically.
+- Router selects provider by role or explicit user selection.
+- Support multiple simultaneous chat sessions.
+- Maintain conversation history.
+- Add provider health monitoring.
+- Use dependency injection where appropriate.
+- Follow SOLID principles.
+- Use async/await throughout.
+- Strong typing and docstrings.
+- Comprehensive logging.
+- Configuration via configs/atlas.yaml.
+- Unit tests for every new module.
 
-- Never generate placeholder or dummy implementations unless explicitly requested.
-- Never redesign or simplify the architecture.
-- Never break backward compatibility.
-- Modify the minimum number of files required.
-- Prefer extending existing modules over rewriting them.
-- Keep the code modular, testable, and production-ready.
-- Every feature must include proper error handling, logging, validation, documentation, and tests.
-- Every implementation must be fully functional.
+CLI additions:
+atlas chat
+atlas provider list
+atlas provider info
+atlas provider health
+atlas session list
+atlas session new
+atlas session delete
+atlas model list
+atlas model load
+atlas model unload
 
-Before implementing anything:
+Do not implement actual cloud API calls yet. Use provider stubs/mocks with a common interface so real APIs can be plugged in later without changing the architecture.
 
-1. Read all uploaded documents.
-2. Summarize your understanding of AtlasOS.
-3. Explain the overall architecture.
-4. List all planned modules and their dependencies.
-5. Identify any ambiguities or conflicts in the documents.
-6. Create an implementation roadmap.
-
-After that, wait for my confirmation before generating code.
-
-For every future task, strictly follow the Output Format defined in Output Format.txt and continue using the uploaded documents as the authoritative reference throughout the project.
+Deliver production-quality code, not placeholders. Ensure everything runs, passes tests, and integrates cleanly with the existing Runtime Core and CLI.

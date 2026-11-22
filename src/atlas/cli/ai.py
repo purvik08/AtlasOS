@@ -25,7 +25,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from atlas.ai.manager import AIManager, SessionNotFoundError
-from atlas.ai.providers.base import ProviderStatus
+from atlas.ai.providers.base import ProviderRole, ProviderStatus
 
 console = Console()
 
@@ -36,20 +36,12 @@ console = Console()
 
 
 def _get_manager(ctx: click.Context) -> AIManager:
-    """Resolve AIManager and ensure it is started.
-
-    Every `atlas` invocation is a new process, so the manager is always
-    unstarted.  start() scans models_dir and registers providers — without
-    it, ModelRegistry is empty and no inference works.
-    """
+    """Retrieve (or lazy-create) the AIManager from the CLI context."""
     manager: AIManager | None = ctx.obj.get("ai_manager")
     if manager is None:
         app = ctx.obj["app"]
-        try:
-            manager = app.container.resolve("ai_manager")
-        except Exception:
-            manager = AIManager(app.config)
-        asyncio.run(manager.start())  # always required — populates ModelRegistry
+        manager = AIManager(app.config)
+        asyncio.run(manager.start())
         ctx.obj["ai_manager"] = manager
     return manager
 
@@ -84,7 +76,7 @@ def _get_manager(ctx: click.Context) -> AIManager:
     help="Single-shot message (non-interactive mode).",
 )
 @click.pass_context
-def chat_command(ctx: click.Context, provider: str | None, role: str, model: str | None, system: str, message: str | None) -> None:
+def chat_command(ctx, provider, role, model, system, message):
     """Start an AI chat session.
 
     By default opens an interactive REPL.  Pass --message for one-shot usage::
@@ -159,14 +151,14 @@ def _run_chat_turn(manager: AIManager, session_id: str, user_input: str) -> None
 
 
 @click.group(name="provider")
-def provider_group() -> None:
+def provider_group():
     """Manage AI providers."""
     pass
 
 
 @provider_group.command(name="list")
 @click.pass_context
-def provider_list(ctx: click.Context) -> None:
+def provider_list(ctx):
     """List all registered AI providers."""
     manager = _get_manager(ctx)
     providers = manager.list_providers()
@@ -194,7 +186,7 @@ def provider_list(ctx: click.Context) -> None:
 @provider_group.command(name="info")
 @click.argument("provider_name")
 @click.pass_context
-def provider_info(ctx: click.Context, provider_name: str) -> None:
+def provider_info(ctx, provider_name):
     """Show detailed information about a specific provider."""
     manager = _get_manager(ctx)
 
@@ -229,7 +221,7 @@ def provider_info(ctx: click.Context, provider_name: str) -> None:
 @provider_group.command(name="health")
 @click.argument("provider_name")
 @click.pass_context
-def provider_health(ctx: click.Context, provider_name: str) -> None:
+def provider_health(ctx, provider_name):
     """Show health status for a provider."""
     manager = _get_manager(ctx)
 
@@ -275,14 +267,14 @@ def provider_health(ctx: click.Context, provider_name: str) -> None:
 
 
 @click.group(name="session")
-def session_group() -> None:
+def session_group():
     """Manage AI chat sessions."""
     pass
 
 
 @session_group.command(name="list")
 @click.pass_context
-def session_list(ctx: click.Context) -> None:
+def session_list(ctx):
     """List all active chat sessions."""
     manager = _get_manager(ctx)
     sessions = manager.list_sessions()
@@ -322,7 +314,7 @@ def session_list(ctx: click.Context) -> None:
 @click.option("--model", "-m", default=None, help="Model ID.")
 @click.option("--system", "-s", default="", help="System prompt.")
 @click.pass_context
-def session_new(ctx: click.Context, provider: str | None, role: str, model: str | None, system: str) -> None:
+def session_new(ctx, provider, role, model, system):
     """Create a new chat session and print its ID."""
     manager = _get_manager(ctx)
     try:
@@ -352,7 +344,7 @@ def session_new(ctx: click.Context, provider: str | None, role: str, model: str 
 @session_group.command(name="delete")
 @click.argument("session_id")
 @click.pass_context
-def session_delete(ctx: click.Context, session_id: str) -> None:
+def session_delete(ctx, session_id):
     """Delete a chat session by ID."""
     manager = _get_manager(ctx)
     try:

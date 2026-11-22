@@ -90,10 +90,6 @@ class DependencyContainer:
 
         return key in self._bindings
 
-    def __contains__(self, key: Any) -> bool:
-        """Support `key in container` syntax."""
-        return self.is_registered(key)
-
     def resolve(self, key: Any) -> Any:
         """Resolve *key* to a concrete instance using a synchronous factory.
 

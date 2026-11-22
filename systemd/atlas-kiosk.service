@@ -1,0 +1,24 @@
+[Unit]
+Description=Atlas OS Kiosk UI
+Documentation=https://github.com/purvik08/AtlasOS
+After=graphical.target network.target
+Wants=graphical.target
+PartOf=graphical.target
+
+[Service]
+Type=simple
+User=atlas
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/atlas/.Xauthority
+Environment=ATLAS_KIOSK_FULLSCREEN=1
+Environment=ATLAS_MODELS_DIR=/home/atlas/AtlasOS/models
+WorkingDirectory=/home/atlas/AtlasOS
+ExecStartPre=/bin/sleep 3
+ExecStart=/home/atlas/AtlasOS/.venv/bin/python -m atlas.ui.kiosk.main
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/home/atlas/AtlasOS/logs/kiosk.log
+StandardError=append:/home/atlas/AtlasOS/logs/kiosk.log
+
+[Install]
+WantedBy=graphical.target

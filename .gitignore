@@ -1,29 +1,55 @@
+# Python
 __pycache__/
 *.py[cod]
-*.gguf
+*.pyo
+*.pyd
+.Python
+*.egg
 *.egg-info/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
+dist/
+build/
+.eggs/
 .venv/
 venv/
-build/
-dist/
+env/
+pip-wheel-metadata/
 
-# Runtime data -- keep directories, ignore contents.
+# Models — never commit GGUF files, they are GBs in size
+models/*.gguf
+models/*.bin
+models/*.ggml
+
+# Logs
+logs/*.log
+logs/*.log.*
+
+# Data
 data/
-logs/*
-!logs/.gitkeep
-models/*
-!models/.gitkeep
-!models/*.gguf
-plugins/*
-!plugins/.gitkeep
 
-# Local config / secrets
-.env
-*.token
+# Device identity
+.device-id
 
+# Image build artifacts
+image/work/
+*.img
+*.img.xz
+*.img.gz
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
 .DS_Store
-models/qwen3-0.6b-q4_k_m.gguf
-models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
+Thumbs.db
+
+# mypy / ruff / pytest
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# pi-gen work dir (never commit the chroot)
+pi-gen/work/

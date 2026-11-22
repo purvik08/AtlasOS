@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from atlas.ai.providers.base import MessageRole
 from atlas.ai.session import ChatSession, SessionManager
+from atlas.ai.providers.base import MessageRole
 
 
 @pytest.fixture

@@ -1,0 +1,41 @@
+{
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "src": "src",
+      "extraPaths": ["tests"]
+    }
+  ],
+  "reportMissingImports": true,
+  "reportMissingModuleSource": true,
+  "reportUndefinedVariable": true,
+  "reportInvalidTypeForm": true,
+  "reportGeneralTypeIssues": true,
+  "reportPropertyTypeMismatch": true,
+  "reportFunctionMemberAccess": true,
+  "reportNeitherMatch": true,
+  "reportIncompatibleMethodOverride": true,
+  "reportIncompleteAnnotations": true,
+  "reportMissingParameterType": true,
+  "reportMissingTypeArgument": true,
+  "reportOptionalMemberAccess": true,
+  "reportOptionalCall": true,
+  "reportOptionalSubscript": true,
+  "reportPrivateImportUsage": true,
+  "reportUnusedClass": true,
+  "reportUnusedFunction": true,
+  "reportUnusedImport": true,
+  "reportUnusedVariable": true,
+  "reportDeprecated": true,
+  "reportAbstractIssue": true,
+  "reportAssertAlwaysTrue": true,
+  "reportAssertAlwaysFalse": true,
+  "reportConstantRedefinition": true,
+  "reportOptionalIterable": true,
+  "reportOptionalContextManager": true,
+  "reportMissingTypeArgument": true,
+  "reportMissingTypeStubs": "none",
+  "stubPath": "",
+  "typeCheckingMode": "standard",
+  "useLibraryCodeForTypes": true
+}

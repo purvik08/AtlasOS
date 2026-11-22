@@ -1,0 +1,7 @@
+"""Desktop UI services package."""
+
+from __future__ import annotations
+
+__all__ = [
+    "ApiService",
+]
